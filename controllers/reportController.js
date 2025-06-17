@@ -12,6 +12,11 @@ const CatchAsync = require('./../utils/catchAsync');
 const generatePDF = require('./../utils/generatePDF');
 const generateExcel = require('./../utils/generateExcel');
 
+// @ts-ignore
+const { calculateXirr } = require('./../utils/xirr');
+
+// const { xirr } = require('xirr');
+
 exports.getUserId = CatchAsync(async (req, res, next) => {
   const { name, format } = req.body; // Expect 'format' to specify pdf or excel
 
@@ -181,78 +186,251 @@ exports.getClaimsByClient = CatchAsync(async (req, res) => {
 });
 
 exports.getSchemeByClient = CatchAsync(async (req, res) => {
-  // Find schemes for the user
-  console.log(req.body, req.userId);
-  const name = req.name;
-  const schemes = await Mutual.find({ holderId: req.userId })
-    .populate('holderId', 'name')
-    .populate('nominee1Id', 'name')
-    .populate('nominee2Id', 'name')
-    .populate('nominee3Id', 'name');
-  if (!schemes.length) {
-    return res.status(404).json({
-      status: 'fail',
-      message: `No schemes found for user with the name: ${name}`
-    });
-  }
+  try {
+    const fetch = (...args) =>
+      import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
-  const formattedSchemes = schemes.map(scheme => ({
-    _id: scheme._id,
-    schemeName: scheme.schemeName,
-    fundHouse: scheme.fundHouse,
-    AMFI: scheme.AMFI,
-    holderName: scheme.holderId?.name || null,
-    nominee1Name: scheme.nominee1Id?.name || null,
-    nominee2Name: scheme.nominee2Id?.name || null,
-    nominee3Name: scheme.nominee3Id?.name || null,
-    mode: scheme.mode,
-    startDate: scheme.startDate,
-    amount: scheme.amount,
-    totalunits: scheme.totalunits,
-    __v: scheme.__v
-  }));
+    if (!req.userId) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'User ID is required'
+      });
+    }
 
-  console.log(formattedSchemes);
-  // Define fields for mutual fund data
-  const mutualFundFields = [
-    { label: 'Scheme Name', value: 'schemeName' },
-    { label: 'Fund House', value: 'fundHouse' },
-    { label: 'AMFI', value: 'AMFI' },
-    { label: 'Mode', value: 'mode' },
-    { label: 'Start Date', value: 'startDate' },
-    { label: 'Amount', value: 'amount' },
-    { label: 'Total Units', value: 'totalunits' },
-    { label: 'Client Name', value: 'holderName' },
-    { label: 'Nominee 1', value: 'nominee1Name' },
-    { label: 'Nominee 2', value: 'nominee2Name' },
-    { label: 'Nominee 3', value: 'nominee3Name' }
-  ];
+    const schemes = await Mutual.find({ holderId: req.userId })
+      .populate('holderId', 'name email')
+      .populate('nominee1Id', 'name relation')
+      .populate('nominee2Id', 'name relation')
+      .populate('nominee3Id', 'name relation')
+      .lean();
 
-  // Generate the report based on the requested format
-  if (req.format === 'pdf') {
-    const pdfPath = path.join(__dirname, `${name}_Mutual_Funds_Report.pdf`);
-    generatePDF(
-      formattedSchemes,
-      pdfPath,
-      res,
-      mutualFundFields,
-      `Mutual Funds report of ${formattedSchemes[0].holderName}`,
-      'N/A'
+    if (!schemes || schemes.length === 0) {
+      return res.status(404).json({
+        status: 'fail',
+        message: `No mutual fund schemes found for this user`
+      });
+    }
+
+    // CAGR calculator
+    const calculateCAGR = (
+      startValue,
+      endValue,
+      startDate,
+      endDate = new Date()
+    ) => {
+      if (!startValue || startValue <= 0) return 0;
+      const years =
+        (endDate - new Date(startDate)) / (1000 * 60 * 60 * 24 * 365);
+      if (years <= 0) return 0;
+      const cagr = (Math.pow(endValue / startValue, 1 / years) - 1) * 100;
+      return cagr;
+    };
+
+    // ✅ XIRR for SIPs
+    const calculateSIPXIRR = (transactions, currentValue) => {
+      try {
+        const cashflows = transactions.map(txn => ({
+          amount: -txn.amount,
+          when: new Date(txn.date)
+        }));
+
+        // Add final value as inflow on today's date
+        cashflows.push({
+          amount: currentValue,
+          when: new Date()
+        });
+
+        const rate = calculateXirr(cashflows);
+        return rate * 100; // convert to %
+      } catch (err) {
+        console.error('XIRR Calculation Error:', err.message);
+        return 0;
+      }
+    };
+
+    const formattedSchemes = await Promise.all(
+      schemes.map(async scheme => {
+        const navRes = await fetch(
+          `https://api.mfapi.in/mf/${scheme.AMFI}/latest`
+        );
+        if (!navRes.ok)
+          throw new Error(`Failed to fetch NAV: ${navRes.statusText}`);
+        const navData = await navRes.json();
+        const currNAV = parseFloat(navData.data[0]?.nav || '0');
+
+        const totalInvested =
+          scheme.investmentType === 'lumpsum'
+            ? scheme.lumpsumAmount
+            : scheme.sipTransactions.reduce((sum, txn) => sum + txn.amount, 0);
+
+        const Units =
+          scheme.investmentType === 'lumpsum'
+            ? scheme.lumpsumUnits
+            : scheme.sipTransactions.reduce((sum, txn) => sum + txn.units, 0);
+
+        const redeemedUnits =
+          scheme.investmentType === 'sip'
+            ? scheme.sipTransactions.reduce(
+                (sum, txn) => sum + (txn.redeemedUnits || 0),
+                0
+              )
+            : parseFloat(scheme.redeemedUnits || 0);
+
+        const totalUnits = Units - redeemedUnits;
+        const currentValue = currNAV * totalUnits || 0;
+        const growth = currentValue - totalInvested;
+        const growthPercentage =
+          totalInvested > 0 ? (growth / totalInvested) * 100 : 0;
+
+        const startDate =
+          scheme.investmentType === 'lumpsum'
+            ? scheme.lumpsumDate
+            : scheme.sipStartDate;
+
+        const cagr =
+          scheme.investmentType === 'sip'
+            ? calculateSIPXIRR(scheme.sipTransactions, currentValue)
+            : calculateCAGR(totalInvested, currentValue, startDate);
+
+        return {
+          _id: scheme._id,
+          investmentType: scheme.investmentType,
+          schemeName: scheme.schemeName,
+          fundHouse: scheme.fundHouse,
+          AMFI: scheme.AMFI,
+          holderName: scheme.holderId?.name || 'N/A',
+          holderEmail: scheme.holderId?.email || 'N/A',
+          nominee1: scheme.nominee1Id
+            ? `${scheme.nominee1Id.name} (${scheme.nominee1Id.relation ||
+                'N/A'})`
+            : 'N/A',
+          nominee2: scheme.nominee2Id
+            ? `${scheme.nominee2Id.name} (${scheme.nominee2Id.relation ||
+                'N/A'})`
+            : 'N/A',
+          nominee3: scheme.nominee3Id
+            ? `${scheme.nominee3Id.name} (${scheme.nominee3Id.relation ||
+                'N/A'})`
+            : 'N/A',
+          startDate: new Date(startDate).toLocaleDateString('en-IN'),
+          totalInvested: totalInvested.toFixed(1),
+          currentValue: currentValue.toFixed(1),
+          growth: growth.toFixed(1),
+          growthPercentage: growthPercentage.toFixed(1),
+          cagr: cagr.toFixed(2),
+          totalUnits: totalUnits.toFixed(1),
+          lastUpdated: new Date(scheme.lastUpdated).toLocaleDateString('en-IN'),
+          status: scheme.investmentType === 'sip' ? scheme.sipStatus : 'active',
+          investmentDuration: calculateInvestmentDuration(startDate)
+        };
+      })
     );
-  } else if (req.format === 'excel') {
-    const excelPath = path.join(__dirname, `${name}_Mutual_Funds_Report.xlsx`);
-    generateExcel(
-      formattedSchemes,
-      excelPath,
-      res,
-      mutualFundFields,
-      `Mutual Funds report of ${formattedSchemes[0].holderName}`,
-      'N/A'
-    );
-  } else {
-    return res.status(400).json({
-      status: 'fail',
-      message: 'Invalid format. Specify "pdf" or "excel".'
+
+    function calculateInvestmentDuration(startDate) {
+      const start = new Date(startDate);
+      const now = new Date();
+
+      let months = (now.getFullYear() - start.getFullYear()) * 12;
+      months -= start.getMonth();
+      months += now.getMonth();
+
+      const years = Math.floor(months / 12);
+      const remainingMonths = months % 12;
+
+      return `${years} years ${remainingMonths} months`;
+    }
+
+    const mutualFundFields = [
+      { label: 'Scheme Name', value: 'schemeName' },
+      { label: 'Fund House', value: 'fundHouse' },
+      { label: 'Investment Type', value: 'investmentType' },
+      { label: 'Status', value: 'status' },
+      { label: 'AMFI Code', value: 'AMFI' },
+      { label: 'Start Date', value: 'startDate' },
+      { label: 'Duration', value: 'investmentDuration' },
+      { label: 'Total Invested', value: 'totalInvested', format: 'currency' },
+      { label: 'Current Value', value: 'currentValue', format: 'currency' },
+      { label: 'Growth', value: 'growth', format: 'currency' },
+      {
+        label: 'Growth (in %)',
+        value: 'growthPercentage',
+        format: 'percentage'
+      },
+      { label: 'CAGR / XIRR', value: 'cagr', format: 'percentage' },
+      { label: 'Total Units', value: 'totalUnits' }
+    ];
+
+    const portfolioSummary = {
+      totalInvested: formattedSchemes
+        .reduce((sum, scheme) => sum + parseFloat(scheme.totalInvested), 0)
+        .toFixed(2),
+      currentValue: formattedSchemes
+        .reduce((sum, scheme) => sum + parseFloat(scheme.currentValue), 0)
+        .toFixed(2),
+      totalGrowth: formattedSchemes
+        .reduce((sum, scheme) => sum + parseFloat(scheme.growth), 0)
+        .toFixed(2),
+      weightedCAGR: calculateWeightedCAGR(formattedSchemes)
+    };
+
+    function calculateWeightedCAGR(schemes) {
+      let totalWeightedCAGR = 0;
+      let totalInvestment = 0;
+
+      schemes.forEach(scheme => {
+        const investment = parseFloat(scheme.totalInvested);
+        totalWeightedCAGR += investment * parseFloat(scheme.cagr);
+        totalInvestment += investment;
+      });
+
+      return totalInvestment > 0
+        ? (totalWeightedCAGR / totalInvestment).toFixed(2)
+        : '0.00';
+    }
+
+    const clientName = formattedSchemes[0]?.holderName || 'Client';
+    const reportTitle = `Mutual Funds Portfolio Report - ${clientName}`;
+    const reportDate = new Date().toLocaleDateString('en-IN');
+
+    if (req.format === 'pdf') {
+      const pdfPath = path.join(__dirname, 'mutual_funds_report.pdf');
+      await generatePDF(
+        formattedSchemes,
+        pdfPath,
+        res,
+        mutualFundFields,
+        reportTitle,
+        reportDate,
+        'N/A'
+      );
+    } else if (req.format === 'excel') {
+      const excelPath = path.join(__dirname, 'mutual_funds_report.xlsx');
+      await generateExcel(
+        formattedSchemes,
+        excelPath,
+        res,
+        mutualFundFields,
+        reportTitle,
+        reportDate,
+        'N/A'
+      );
+    } else {
+      res.status(200).json({
+        status: 'success',
+        data: {
+          clientName,
+          reportDate,
+          portfolioSummary,
+          schemes: formattedSchemes
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error generating mutual fund report:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'An error occurred while generating the report',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -303,11 +481,12 @@ exports.getPolicyByClient = CatchAsync(async (req, res) => {
     { label: 'Nominee 2', value: 'nominee2Name' },
     { label: 'Nominee 3', value: 'nominee3Name' }
   ];
-  console.log(formattedPolicies);
+  // console.log(formattedPolicies);
   // Step 4: Generate PDF or Excel
   if (req.format === 'pdf') {
     // Create and send a PDF file
     const pdfPath = path.join(__dirname, `${name}_life_Ins_report.pdf`);
+    console.log(pdfPath);
     generatePDF(
       formattedPolicies,
       pdfPath,

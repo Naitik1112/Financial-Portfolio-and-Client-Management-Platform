@@ -120,10 +120,12 @@ function DebtTab() {
 }
 
 const columns = [
-  { id: 'name', label: 'Name', minWidth: 100 , maxwidth: 100 },
-  { id: 'unit', label: 'Units', minWidth: 100 },
-  { id: 'currNAV', label: 'Current NAV', minWidth: 120 },
-  { id: 'totalAmount', label: 'Total Amount', minWidth: 130 },
+  { id: 'name', label: 'Scheme Name', minWidth: 150 },
+  { id: 'investmentType', label: 'Investment Type', minWidth: 120 },
+  { id: 'totalInvested', label: 'Amount Invested', minWidth: 130 },
+  { id: 'status', label: 'SIP Status', minWidth: 100 }, // Show only for SIP
+  { id: 'totalUnits', label: 'Total Units', minWidth: 100 },
+  { id: 'currentValue', label: 'Current Value', minWidth: 130 },
 ];
 
 function MutualFundsTab() {
@@ -138,6 +140,7 @@ function MutualFundsTab() {
     const fetchData = async () => {
       try {
         const data = await fetchMutualFundsWithNAV(userId);
+        console.log(data)
         setMutualFunds(data);
         setLoading(false);
       } catch (err) {

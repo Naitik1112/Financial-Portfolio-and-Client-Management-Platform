@@ -17,11 +17,11 @@ exports.convertNameToId = catchAsync(async (req, res, next) => {
 
   // Destructure variables from the request body
   const { holderId, nominee1Id, nominee2Id, nominee3Id } = req.body;
-
+  console.log('holderId ', holderId);
   // Convert holder name to ID if not already an ID
-  if (holderId && holderId.trim() !== '') {
-    req.body.holderId = await findIdByName(holderId);
-  }
+  // if (holderId && holderId.trim() !== '') {
+  //   req.body.holderId = await findIdByName(holderId);
+  // }
 
   // Process nominees, removing them if their value is empty
   if (!nominee1Id || nominee1Id.trim() === '') {
@@ -47,16 +47,16 @@ exports.convertNameToId = catchAsync(async (req, res, next) => {
 
 exports.getMutualFundByUser = catchAsync(async (req, res, next) => {
   const userId = req.params.id;
-
+  console.log(userId);
   const mutualFunds = await MF.find({ holderId: userId });
-
+  console.log(mutualFunds.length);
   if (!mutualFunds.length) {
     return res.status(404).json({
       status: 'fail',
       message: 'No mutual funds found for the specified user.'
     });
   }
-
+  console.log('success');
   res.status(200).json({
     status: 'success',
     results: mutualFunds.length,
@@ -65,6 +65,142 @@ exports.getMutualFundByUser = catchAsync(async (req, res, next) => {
     }
   });
 });
+
+const calculateTax = (
+  purchaseDate,
+  redeemDate,
+  units,
+  navAtRedemption,
+  navAtPurchase
+) => {
+  const holdingPeriod = (redeemDate - purchaseDate) / (1000 * 3600 * 24); // in days
+  const gainPerUnit = navAtRedemption - navAtPurchase;
+  const totalGain = gainPerUnit * units;
+
+  if (holdingPeriod <= 365) {
+    return { type: 'STCG', tax: 0.15 * totalGain };
+  } else {
+    return { type: 'LTCG', tax: 0.1 * totalGain };
+  }
+};
+
+exports.redeemUnits = catchAsync(async (req, res, next) => {
+  const redemptionMap = req.body; // { mfId1: "100", mfId2: "200" }
+  const taxSummary = [];
+
+  for (const mfId of Object.keys(redemptionMap)) {
+    let unitsToRedeem = parseFloat(redemptionMap[mfId]);
+    if (isNaN(unitsToRedeem) || unitsToRedeem <= 0) continue;
+
+    const mf = await MF.findOne({ _id: mfId });
+
+    if (!mf) {
+      return res.status(404).json({ message: `Mutual fund not found: ${mfId}` });
+    }
+
+    // Calculate current NAV
+    const nav = 
+      mf.currentValue && mf.investmentType === 'lumpsum'
+        ? mf.currentValue / mf.lumpsumUnits
+        : mf.currentValue /
+          mf.sipTransactions.reduce((sum, tx) => sum + (tx.units || 0), 0);
+
+    if (!nav || isNaN(nav)) {
+      return res.status(400).json({ message: `Unable to get NAV for mutual fund ${mfId}` });
+    }
+
+    let taxForThisFund = 0;
+
+    // 🟠 Lumpsum Redemption
+    if (mf.investmentType === 'lumpsum') {
+      const alreadyRedeemed = mf.redeemedUnits || 0;
+      const availableUnits = mf.lumpsumUnits - alreadyRedeemed;
+
+      if (unitsToRedeem > availableUnits) {
+        return res.status(400).json({ message: `Not enough units in lumpsum for ${mf.schemeName}` });
+      }
+
+      const purchaseNAV = mf.lumpsumAmount / mf.lumpsumUnits;
+      const tax = calculateTax(new Date(mf.lumpsumDate), new Date(), unitsToRedeem, nav, purchaseNAV);
+      taxForThisFund += tax.tax;
+
+      await MF.updateOne(
+        { _id: mfId },
+        {
+          $inc: { redeemedUnits: unitsToRedeem },
+          $push: {
+            redemptions: {
+              date: new Date(),
+              units: unitsToRedeem,
+              nav
+            }
+          }
+        }
+      );
+    }
+
+    // 🔁 SIP Redemption
+    if (mf.investmentType === 'sip') {
+      const transactions = mf.sipTransactions || [];
+      transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      const bulkOps = [];
+
+      for (const tx of transactions) {
+        if (unitsToRedeem <= 0) break;
+
+        const alreadyRedeemed = tx.redeemedUnits || 0;
+        const available = tx.units - alreadyRedeemed;
+        if (available <= 0) continue;
+
+        const redeemNow = Math.min(unitsToRedeem, available);
+        const tax = calculateTax(new Date(tx.date), new Date(), redeemNow, nav, tx.nav);
+        taxForThisFund += tax.tax;
+
+        bulkOps.push({
+          updateOne: {
+            filter: {
+              _id: mfId,
+              'sipTransactions._id': tx._id
+            },
+            update: {
+              $inc: { 'sipTransactions.$.redeemedUnits': redeemNow },
+              $push: {
+                'sipTransactions.$.redemptions': {
+                  date: new Date(),
+                  units: redeemNow,
+                  nav
+                }
+              }
+            }
+          }
+        });
+
+        unitsToRedeem -= redeemNow;
+      }
+
+      if (unitsToRedeem > 0) {
+        return res.status(400).json({
+          message: `Not enough units to redeem in SIP for ${mf.schemeName}`
+        });
+      }
+
+      await MF.bulkWrite(bulkOps);
+    }
+
+    taxSummary.push({
+      mutualFundId: mfId,
+      schemeName: mf.schemeName,
+      estimatedTax: taxForThisFund.toFixed(2)
+    });
+  }
+
+  res.status(200).json({
+    message: 'Redemption completed successfully',
+    taxSummary
+  });
+});
+
 
 exports.getAllLifePolicy = factory.getAll(MF);
 exports.getLifePolicy = factory.getOne(MF, {

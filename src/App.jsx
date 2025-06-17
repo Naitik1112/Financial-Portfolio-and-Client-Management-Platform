@@ -24,6 +24,7 @@ import EditPolicy from './pages/editInsurance'
 import Calender from './pages/calender'
 import AddGeneral from './pages/addGeneral'
 import EditGeneral from './pages/editGeneral'
+import Redemption from './pages/redemption'
 
 // import './App.css'
 
@@ -54,6 +55,7 @@ function App() {
           <Route path = "/calender" element={<Calender/>} />
           <Route path = "/addGeneral" element={<AddGeneral/>} />
           <Route path = "/GeneralUpdate/:id" element={<EditGeneral/>} />
+          <Route path = '/redemption' element={<Redemption/>} />
         </Routes>
       </div>
     </>

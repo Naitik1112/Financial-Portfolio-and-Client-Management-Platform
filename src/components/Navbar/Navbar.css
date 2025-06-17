@@ -15,9 +15,9 @@ nav {
   left: 0;
   background: #101010;
   height: 80px;
-  width: 92%;
+  width: 96%;
   z-index: 5;
-  margin: 1% 4%;
+  margin: 1% 2%;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-radius: 15px;

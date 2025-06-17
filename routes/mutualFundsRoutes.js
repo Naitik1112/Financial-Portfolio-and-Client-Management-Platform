@@ -16,6 +16,8 @@ router
 
 router.route('/user/:id').get(mutualFundsController.getMutualFundByUser);
 
+router.route('/redeemUnits').patch(mutualFundsController.redeemUnits);
+
 router
   .route('/:id')
   .get(mutualFundsController.getLifePolicy)

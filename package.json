@@ -46,6 +46,7 @@
     "morgan": "^1.9.1",
     "multer": "^1.4.5-lts.1",
     "node-excel-export": "^1.4.4",
+    "node-fetch": "^3.3.2",
     "node-schedule": "^2.1.1",
     "nodemailer": "^6.9.16",
     "parcel": "^2.13.2",
@@ -61,6 +62,7 @@
     "stripe": "^17.4.0",
     "styled": "^1.0.0",
     "validator": "^13.12.0",
+    "xirr": "^1.1.0",
     "xlsx": "^0.18.5",
     "xlsx-style": "^0.8.13",
     "xss-clean": "^0.1.4"

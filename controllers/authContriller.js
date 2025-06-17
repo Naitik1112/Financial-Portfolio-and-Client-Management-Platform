@@ -14,7 +14,7 @@ const signToken = id => {
 
 const createSendToken = (user, statusCode, res) => {
   const token = signToken(user._id);
-  console.log(token);
+  // console.log(token);
   const cookieOptions = {
     expires: new Date(
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
@@ -30,15 +30,15 @@ const createSendToken = (user, statusCode, res) => {
     cookieOptions.secure = false; // Allow in localhost (HTTP)
   }
 
-  console.log(process.env.NODE_ENV);
-  console.log(cookieOptions);
+  // console.log(process.env.NODE_ENV);
+  // console.log(cookieOptions);
   res.cookie('jwt', token, cookieOptions);
-  console.log('Cookies Set:', res.getHeaders()['set-cookie']);
+  // console.log('Cookies Set:', res.getHeaders()['set-cookie']);
   // Remove password from output
   user.password = undefined;
 
   res.cookie('jwt', token, cookieOptions);
-  console.log('Set-Cookie Header:', res.getHeaders()['set-cookie']); // Debug
+  // console.log('Set-Cookie Header:', res.getHeaders()['set-cookie']); // Debug
   res.status(statusCode).json({ status: 'success', token });
 };
 
@@ -73,7 +73,7 @@ exports.login = catchAsync(async (req, res, next) => {
 });
 
 exports.logout = (req, res) => {
-  console.log(req.cookies.jwt);
+  // console.log(req.cookies.jwt);
   res.cookie('jwt', 'loggedout', {
     expires: new Date(Date.now() + 10 * 1000),
     httpOnly: true
@@ -82,8 +82,8 @@ exports.logout = (req, res) => {
 };
 
 exports.protect = catchAsync(async (req, res, next) => {
-  console.log('Headers:', req.headers); // Debug request headers
-  console.log('Cookies:', req.cookies); // Debug request cookies
+  // console.log('Headers:', req.headers); // Debug request headers
+  // console.log('Cookies:', req.cookies); // Debug request cookies
 
   let token;
   if (
@@ -94,7 +94,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   } else if (req.cookies.jwt) {
     token = req.cookies.jwt;
   }
-  console.log('Token Found:', token); // Debug token value
+  // console.log('Token Found:', token); // Debug token value
 
   if (!token) {
     return next(
@@ -154,7 +154,7 @@ exports.isLoggedIn = async (req, res, next) => {
 
 exports.restrictTo = (...roles) => {
   return (req, res, next) => {
-    console.log(req.user);
+    // console.log(req.user);
     if (!roles.includes(req.user.role)) {
       return next(
         new AppError('You do not have permission to access this route', 403)

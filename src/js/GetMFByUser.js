@@ -1,37 +1,61 @@
 import axios from 'axios';
 
-// Fetch Mutual Funds and their NAVs
 export const fetchMutualFundsWithNAV = async userId => {
   try {
-    // Fetch mutual funds of the user
     const mutualFundsResponse = await axios.get(
       `/api/v1/mutualFunds/user/${userId}`
     );
     const mutualFundsData = mutualFundsResponse.data.data.mutualFunds;
 
-    // Fetch NAVs for each mutual fund
     const updatedDataPromises = mutualFundsData.map(async fund => {
       try {
         const amfiCode = fund.AMFI;
         const navResponse = await axios.get(
           `https://api.mfapi.in/mf/${amfiCode}/latest`
         );
-        const currNAV = parseFloat(navResponse.data.data[0]?.nav || 0); // Handle missing data
+        const currNAV = parseFloat(navResponse.data.data[0]?.nav || 0);
+
+        // Calculate total invested amount
+        const totalInvested =
+          fund.investmentType === 'sip'
+            ? fund.sipTransactions.reduce((sum, txn) => sum + txn.amount, 0)
+            : fund.lumpsumAmount;
+
+        // Determine total units
+        const totalUnits =
+          fund.investmentType === 'sip'
+            ? fund.sipTransactions.reduce((sum, txn) => sum + txn.units, 0)
+            : fund.lumpsumUnits;
+
+        // Determine redeemed units
+        const redeemedUnits =
+          fund.investmentType === 'sip'
+            ? fund.sipTransactions.reduce(
+                (sum, txn) => sum + (txn.redeemedUnits || 0),
+                0
+              )
+            : parseFloat(fund.redeemedUnits || 0); // ✅ corrected
+
+        const effectiveUnits = totalUnits - redeemedUnits;
+
+        // Compute current value
+        const currentValue = effectiveUnits * currNAV;
 
         return {
           name: fund.schemeName,
-          amfi: amfiCode,
-          unit: fund.totalunits.toFixed(2),
-          currNAV: currNAV.toFixed(2),
-          _id: fund._id,
-          totalAmount: (fund.totalunits * currNAV).toFixed(2)
+          investmentType: fund.investmentType,
+          status: fund.investmentType === 'sip' ? fund.sipStatus : 'N/A',
+          totalInvested: totalInvested.toFixed(2),
+          totalUnits: effectiveUnits.toFixed(2),
+          currentValue: currentValue.toFixed(2),
+          _id: fund._id
         };
       } catch (navError) {
         console.error(
           `Error fetching NAV for AMFI code ${fund.AMFI}:`,
           navError.message
         );
-        return null; // Skip this fund if the NAV fetch fails
+        return null;
       }
     });
 

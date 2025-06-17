@@ -72,6 +72,11 @@ const Navbar = () => {
           </NavLink>
         </li>
         <li>
+          <NavLink to="/redemption" className={`menu ${location.pathname === '/redemption' ? 'active' : ''}`}>
+            Redemption
+          </NavLink>
+        </li>
+        <li>
           <Button
             id="finance-button"
             aria-controls={openFinance ? 'finance-menu' : undefined}
