@@ -11,9 +11,6 @@ function getMutualFundsFromPython() {
       `${pythonPath} "${scriptPath}"`,
       { maxBuffer: 1024 * 1024 * 5 },
       (err, stdout, stderr) => {
-        console.log('stdout : ', stdout);
-        console.log('error : ', err);
-        console.log('here 1');
         if (err) {
           return reject('Python script error: ' + stderr);
         }

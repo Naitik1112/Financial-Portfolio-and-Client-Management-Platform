@@ -6,7 +6,7 @@ const User = require('./../models/userModels');
 
 const path = require('path');
 const { exec } = require('child_process');
-const redisClient = require('../utils/redisClient');
+const { client } = require('../utils/redisClient');
 
 const getMutualFundsFromPython = require('../utils/fetchFunds');
 
@@ -261,9 +261,15 @@ exports.refreshAmfiSchemeCache = (req, res) => {
 
       try {
         const schemeMap = JSON.parse(stdout); // { amfiCode: schemeName }
-        await redisClient.set('amfi_scheme_map', JSON.stringify(schemeMap), {
-          EX: 86400
-        }); // expire after 1 day
+        const res1 = await client.set(
+          'amfi_scheme_map',
+          JSON.stringify(schemeMap),
+          {
+            EX: 86400
+          }
+        ); // expire after 1 day
+        // console.log(' ', res1);
+        // console.log('Response');
         res.status(200).json({
           status: 'success',
           message: 'Cache refreshed',
@@ -272,7 +278,7 @@ exports.refreshAmfiSchemeCache = (req, res) => {
       } catch (e) {
         res
           .status(500)
-          .json({ status: 'error', message: 'JSON parse or Redis error' });
+          .json({ status: 'error', message: `JSON parse or Redis error ${e}` });
       }
     }
   );
@@ -280,7 +286,7 @@ exports.refreshAmfiSchemeCache = (req, res) => {
 
 exports.getSchemesCaching = async (req, res) => {
   try {
-    const cached = await redisClient.get('amfi_scheme_map');
+    const cached = await client.get('amfi_scheme_map');
     if (!cached)
       return res
         .status(404)
