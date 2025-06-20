@@ -35,7 +35,12 @@ app.use(
 
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'http://localhost:5173', process.env.FRONTEND_URL , 'https://financial-portfolio-and-client-mana.vercel.app/'], // Allow both frontend ports
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      process.env.FRONTEND_URL,
+      'https://financial-portfolio-and-client-management-platform-1qibu6r3k.vercel.app/'
+    ], // Allow both frontend ports
     credentials: true // Allow cookies
   })
 );
