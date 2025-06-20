@@ -39,12 +39,16 @@ const LoginPage = () => {
 
   const navigate = useNavigate(); // Initialize useNavigate
 
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  
+  console.log(backendURL);
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
     // Call the backend API to login
     axios
-      .post("/api/v1/users/login", { email, password }, { withCredentials: true })
+      .post(`${backendURL}/api/v1/users/login`, { email, password }, { withCredentials: true })
       .then((response) => {
         // Store JWT in localStorage
         const token = response.data.token;
