@@ -9,6 +9,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import Autocomplete from '@mui/material/Autocomplete';
 import { inputStyles, buttonStyles, containerStyles } from './../styles/themeStyles';
 import dayjs from 'dayjs';
+import axios from 'axios';
 
 const investmentTypes = [{ label: 'SIP', value: 'sip' }, { label: 'Lumpsum', value: 'lumpsum' }];
 const sipStatusOptions = [{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }];
@@ -60,10 +61,11 @@ const AddPolicy = () => {
   useEffect(() => {
     const fetchMutualFunds = async () => {
       try {
-        const response = await fetch('/api/v1/mutualFunds/autocomplete');
-        const data = await response.json();
+        const response = await axios.get('/api/v1/mutualFunds/autocomplete');
+        console.log(response);
+        const data = response.data; // ✅ CORRECT way to access JSON
         if (data && data.data) {
-          setMfOptions(data.data);  // Expected format: [{ amfiCode, schemeName }]
+          setMfOptions(data.data); 
         }
       } catch (error) {
         console.error('Error fetching mutual fund schemes:', error);
