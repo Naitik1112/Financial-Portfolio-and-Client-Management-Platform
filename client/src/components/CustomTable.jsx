@@ -27,7 +27,7 @@ const darkTheme = createTheme({
   },
 });
 
-function CustomTable({ data, columns, variable1 }) {
+function CustomTable({ data, columns, variable1, onDeleteSuccess , onDelete}) {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const navigate = useNavigate();
@@ -45,16 +45,41 @@ function CustomTable({ data, columns, variable1 }) {
     navigate(`/${variable1}/${_id}`);
   };
 
-  const handleDelete = (_id) => {
-    alert(`Delete clicked for ID: ${_id}`);
-    // You can add delete functionality here (e.g., API call to delete the record)
+  const handleDelete = async (_id) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this record?");
+    if (!confirmDelete) return;
+
+    try {
+      const token = localStorage.getItem('jwt');
+
+      const response = await fetch(`/api/v1/${onDelete}/${_id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete the record");
+      }
+
+      alert("Record deleted successfully!");
+
+      // Call the callback function to update the table UI
+      if (onDeleteSuccess) {
+        onDeleteSuccess(_id);
+      }
+    } catch (error) {
+      console.error("Error deleting record:", error);
+      alert("Error deleting record. Please try again.");
+    }
   };
 
   return (
     <ThemeProvider theme={darkTheme}>
       <Paper
         sx={{
-          width: '100%',
+          width: 'max(940px)',
           overflow: 'hidden',
           backgroundColor: (theme) => theme.palette.background.paper,
           color: (theme) => theme.palette.text.primary,
@@ -67,7 +92,7 @@ function CustomTable({ data, columns, variable1 }) {
             aria-label="sticky table"
             sx={{
               '& .MuiTableCell-stickyHeader': {
-                backgroundColor: '#1c1c1c',
+                backgroundColor: '#1F1F1F',
                 color: '#ffffff',
                 fontWeight: 'bold',
               },
@@ -90,7 +115,7 @@ function CustomTable({ data, columns, variable1 }) {
                     {column.label}
                   </TableCell>
                 ))}
-                <TableCell align="center">View More</TableCell>
+                <TableCell align="center">View</TableCell>
                 <TableCell align="center">Delete</TableCell>
               </TableRow>
             </TableHead>
@@ -112,16 +137,15 @@ function CustomTable({ data, columns, variable1 }) {
                     <TableCell align="center">
                       <Button
                         sx={{
-                          borderColor:'white',
-                          color:'white',
-                          hover:'white'
+                          borderColor: 'white',
+                          color: 'white',
                         }}
                         size='small'
                         variant="outlined"
                         color="primary"
                         onClick={() => handleViewMore(row._id)}
                       >
-                        View More
+                        View
                       </Button>
                     </TableCell>
                     <TableCell align="center">
@@ -170,6 +194,8 @@ CustomTable.propTypes = {
   data: PropTypes.array.isRequired,
   columns: PropTypes.array.isRequired,
   variable1: PropTypes.string.isRequired, // `variable1` is required
+  onDelete: PropTypes.string.isRequired,
+  onDeleteSuccess: PropTypes.func, // Callback function to update UI after deletion
 };
 
 export default CustomTable;

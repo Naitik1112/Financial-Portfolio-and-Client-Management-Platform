@@ -1,49 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./Table.css";
+import Brand from "./../../assets/search.png";
+import DeleteIcon from "./../../assets/delete.png";
 
 const App = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortColumn, setSortColumn] = useState(null);
   const [sortAsc, setSortAsc] = useState(true);
+  const [customers, setCustomers] = useState([]);
 
-  const customers = [
-    {
-      id: 1,
-      srNo: 1,
-      clientName: "Zinzu Chan Lee",
-      groupName: "Group A",
-      age: 34,
-      sip: 10,
-      lifeIn: 5,
-      generalIn: 4,
-      healthIn: 1,
-      personalIn: 2,
-    },
-    {
-      id: 2,
-      srNo: 2,
-      clientName: "Jeet Saru",
-      groupName: "Group B",
-      age: 29,
-      sip: 6,
-      lifeIn: 2,
-      generalIn: 4,
-      healthIn: 9,
-      personalIn: 2,
-    },
-    {
-      id: 3,
-      srNo: 3,
-      clientName: "Sonal Gharti",
-      groupName: "Group C",
-      age: 40,
-      sip: 7000,
-      lifeIn: 5,
-      generalIn: 9,
-      healthIn: 7,
-      personalIn: 7,
-    },
-  ];
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const token = localStorage.getItem('jwt');
+        
+        const response = await fetch("/api/v1/users/", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        const data = await response.json();
+        setCustomers(data.data.data);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
+
+  const handleDelete = async (customer) => {
+    const confirmDelete = window.confirm(`Are you sure you want to delete ${customer.name}?`);
+    if (!confirmDelete) return;
+
+    try {
+      const response = await fetch(`/api/v1/users/${customer._id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        setCustomers(customers.filter((c) => c._id !== customer._id));
+        alert(`${customer.name} has been deleted`);
+      } else {
+        console.error("Failed to delete customer");
+      }
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+    }
+  };
 
   const filteredCustomers = customers.filter((customer) =>
     Object.values(customer)
@@ -54,8 +61,8 @@ const App = () => {
 
   const sortedCustomers = [...filteredCustomers].sort((a, b) => {
     if (sortColumn) {
-      const valueA = a[sortColumn].toString().toLowerCase();
-      const valueB = b[sortColumn].toString().toLowerCase();
+      const valueA = a[sortColumn] ? a[sortColumn].toString().toLowerCase() : "";
+      const valueB = b[sortColumn] ? b[sortColumn].toString().toLowerCase() : "";
       return sortAsc ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
     }
     return 0;
@@ -70,27 +77,6 @@ const App = () => {
     }
   };
 
-  // const exportToCSV = () => {
-  //   const headers = Object.keys(customers[0]).join(",");
-  //   const rows = customers
-  //     .map((customer) =>
-  //       Object.values(customer)
-  //         .map((value) => `"${value}"`)
-  //         .join(",")
-  //     )
-  //     .join("\n");
-  //   const csvData = `${headers}\n${rows}`;
-  //   downloadFile(csvData, "customers.csv", "text/csv");
-  // };
-
-  // const downloadFile = (data, fileName, mimeType) => {
-  //   const blob = new Blob([data], { type: mimeType });
-  //   const link = document.createElement("a");
-  //   link.href = URL.createObjectURL(blob);
-  //   link.download = fileName;
-  //   link.click();
-  // };
-
   return (
     <main className="table" id="customers_table">
       <section className="table__header">
@@ -101,43 +87,65 @@ const App = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <img src="./../../assets/search.png" alt="" />
+          <img src={Brand} alt="Search" />
         </div>
-        <div className="export__file">
-          <button onClick={() => (window.location.href = "/addClient")}>Add Client</button>
-          {/* <button onClick={exportToCSV}>Export to CSV</button> */}
-        </div>
+        <button
+          onClick={() => (window.location.href = "/addClient")}
+          className="view-more-btn"
+          style={{ backgroundColor: "rgb(61, 61, 61)", color: "rgb(198, 198, 198)",borderWidth:'0px' }}
+        >
+          Add Client
+        </button>
       </section>
       <section className="table__body">
         <table>
           <thead>
             <tr>
-              {Object.keys(customers[0])
-                .filter((key) => key !== "id") // Exclude "id" from being displayed
-                .map((key) => (
-                  <th key={key} onClick={() => handleSort(key)}>
-                    {key} <span>{sortAsc ? "↑" : "↓"}</span>
-                  </th>
-                ))}
-              <th>Actions</th> {/* Add an Actions column */}
+              <th onClick={() => handleSort("name")}>
+                Name <span>{sortAsc && sortColumn === "name" ? "↑" : "↓"}</span>
+              </th>
+              <th onClick={() => handleSort("DOB")}>
+                DOB <span>{sortAsc && sortColumn === "DOB" ? "↑" : "↓"}</span>
+              </th>
+              <th onClick={() => handleSort("group")}>
+                Group <span>{sortAsc && sortColumn === "group" ? "↑" : "↓"}</span>
+              </th>
+              <th onClick={() => handleSort("age")}>
+                Age <span>{sortAsc && sortColumn === "age" ? "↑" : "↓"}</span>
+              </th>
+              <th>Actions</th>
+              <th>Delete</th>
             </tr>
           </thead>
           <tbody>
             {sortedCustomers.map((customer) => (
-              <tr key={customer.id}>
-                {Object.entries(customer)
-                  .filter(([key]) => key !== "id") // Exclude "id" from being displayed
-                  .map(([key, value]) => (
-                    <td key={key}>{value}</td>
-                  ))}
+              <tr key={customer._id}>
+                <td>{customer.name || "n.d."}</td>
+                <td>{customer.DOB ? new Date(customer.DOB).toLocaleDateString() : "n.d."}</td>
+                <td>{customer.group || "n.d."}</td>
+                <td>{parseInt(customer.age, 10) || "n.d."}</td>
                 <td>
                   <button
-                    // onClick={() => (window.location.href = `/profile/${customer.id}`)}
-                    onClick={() => (window.location.href = "/profile")}
+                    onClick={() => (window.location.href = `/profile/${customer._id}`)}
                     className="view-more-btn"
+                    style={{
+                      padding:'7px',
+                      fontSize: '14px',
+                      borderWidth: '0px',
+                      borderRadius:'5px'
+                    }}
                   >
                     View More
                   </button>
+                </td>
+                <td>
+                  <img
+                    src={DeleteIcon}
+                    alt="Delete"
+                    className="delete-icon"
+                    onClick={() => handleDelete(customer)}
+                    style={{ cursor: "pointer", width: "20px", height: "20px" }}
+                  />
                 </td>
               </tr>
             ))}

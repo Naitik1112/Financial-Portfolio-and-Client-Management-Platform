@@ -12,17 +12,14 @@
     min-height: 100vh;
     /* background: url(./../../../public/background.jpg) no-repeat; */
     background-size: cover;
-    background-position: center;
+    background: linear-gradient(5deg, #000000,#1f1f1f, #3A3A3A);
   }
   
   .container {
     width: 420px;
-    background: transparent;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(18px);
-    box-shadow: 0px 0px 10px #333;
-    color: #fff;
-    border-radius: 10px;
+    border: 2px solid rgb(71, 71, 71);
+    background: linear-gradient(180deg, #1b1b1b, #212121, #303030);
+    border-radius: 20px;
     padding: 30px 40px;
     margin-top: 50px;
   }
@@ -30,6 +27,7 @@
   .container h1 {
     font-size: 36px;
     text-align: center;
+    color: rgb(165, 165, 165);
   }
   
   .container .input-box {

@@ -7,5 +7,14 @@ export default defineConfig({
   plugins: [
     react(),
     svgr() // Add the SVGR plugin to handle ReactComponent SVG imports
-  ]
+  ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000', // Change this to match your backend's port
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  }
 });

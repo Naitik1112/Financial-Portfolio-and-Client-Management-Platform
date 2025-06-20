@@ -10,17 +10,19 @@
   src: url(/Fonts/Furore.otf);
 } */
 nav {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
-  background: #101010a0;
+  background: #101010;
   height: 80px;
-  width: 100%;
+  width: 96%;
   z-index: 5;
+  margin: 1% 2%;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  border-radius: 15px;
   /* font-family: police-fonts; */
-  border-bottom: 1px solid rgb(147, 147, 147);
+  /* border-bottom: 1px solid rgb(147, 147, 147); */
 }
 label.logo {
   color: white;
@@ -35,8 +37,8 @@ label #Logo_img {
   /* top: 5%; */
   left: 0%;
   object-fit: cover;
-  width: 260px;
-  height: 95px;
+  width: 240px;
+  height: 90px;
   padding-bottom: 1%;
   scale: 0.75;
 }
@@ -63,11 +65,14 @@ nav ul li a {
 nav ul li a.active,
 nav ul li a:hover {
   /* background: #2e2e2e; */
-  border-bottom: 3px solid white;
-  color: #ffffff;
+  /* border-bottom: 3px solid white; */
+  color: rgb(171, 146, 83);
   /* backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px); */
   transition: all 0.3s ease;
+}
+.logout{
+  color: #dadada;
 }
 .checkbtn {
   font-size: 30px;

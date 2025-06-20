@@ -1,28 +1,97 @@
+import React, { useState } from 'react';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import { LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import Typography from '@mui/material/Typography';
+import { inputStyles, buttonStyles, containerStyles } from "./../styles/themeStyles"; 
 
-const addClient = () => {
+const AddClient = () => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [DOB, setDOB] = useState(null);
+  const [group, setGroup] = useState('');
+  const [contact, setcontact] = useState('');
+  const [pancard, setpancard] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    let name1
+    name1 = name.split(" ")[0]; 
+    const password = name1 + name.length + "123456";
+    const passwordConfirm = password;
+    console.log("DOB : ",DOB)
+    const clientData = {
+      name,
+      email,
+      DOB,
+      group,
+      contact,
+      pancard,
+      password,
+      passwordConfirm,
+    };
+  
+    try {
+      const response = await fetch('/api/v1/users/addUser', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(clientData),
+      });
+  
+      console.log('Response status:', response.status);
+  
+      if (response.ok) {
+        alert('Client added successfully');
+      } else {
+        const responseText = await response.text();  // Get response as plain text
+        console.log('Response body:', responseText);
+        if (responseText) {
+          try {
+            const error = JSON.parse(responseText);
+            console.error('Error:', error);
+          } catch (e) {
+            console.error('Error: Failed to parse error response', e);
+          }
+        } else {
+          console.error('Error: No response body');
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error occurred while submitting the form');
+    }
+  };
+  
+  
+
   return (
     <Box
+      component="form"
+      onSubmit={handleSubmit}
       sx={{
         display: 'flex',
-        flexDirection: 'column', // Arrange children in column direction
-        gap: 2, // Add spacing between TextFields
+        flexDirection: 'column',
+        gap: 2,
         width: '45ch',
+        marginTop: '120px',
+        padding:'40px',
+        paddingTop:'25px',
+        paddingBottom:'10px',
+        ...containerStyles
       }}
     >
       <Typography
         sx={{
-          fontSize: '2rem', // Make it bigger
-          fontWeight: 'bold', // Make it bolder
-          color: '#fff', // Add a custom color (optional)
+          fontSize: '2rem',
+          fontWeight: 'bold',
+          color: '#fff',
           textAlign: 'center',
-          marginBottom: '10px'
+          marginBottom: '0px',
         }}
       >
         Add Client
@@ -31,63 +100,61 @@ const addClient = () => {
         id="outlined-basic-1"
         label="Name"
         variant="outlined"
-        sx={{
-          '& .MuiInputBase-input': { color: '#fff' },
-          '& .MuiInputLabel-root': { color: '#fff' },
-          '& .MuiOutlinedInput-root': {
-            '& fieldset': { borderColor: '#fff' },
-            '&:hover fieldset': { borderColor: '#fff' },
-            '&.Mui-focused fieldset': { borderColor: '#E4B912' },
-          },
-        }}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        sx={inputStyles}
       />
       <TextField
         id="outlined-basic-2"
         label="Email"
         variant="outlined"
-        sx={{
-          '& .MuiInputBase-input': { color: '#fff' },
-          '& .MuiInputLabel-root': { color: '#fff' },
-          '& .MuiOutlinedInput-root': {
-            '& fieldset': { borderColor: '#fff' },
-            '&:hover fieldset': { borderColor: '#fff' },
-            '&.Mui-focused fieldset': { borderColor: '#E4B912' },
-          },
-        }}
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        sx={inputStyles}
       />
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <DatePicker
-          sx={{
-            '& .MuiInputBase-input': { color: '#fff' },
-            '& .MuiInputLabel-root': { color: '#fff' },
-            '& .MuiOutlinedInput-root': {
-              '& fieldset': { borderColor: '#fff' },
-              '&:hover fieldset': { borderColor: '#fff' },
-              '&.Mui-focused fieldset': { borderColor: '#E4B912' },
-            },
-          }}
           label="Date of Birth"
+          value={DOB}
+          onChange={(newValue) => setDOB(newValue)}
+          sx={inputStyles}
         />
       </LocalizationProvider>
       <TextField
         id="outlined-basic-4"
         label="Group"
         variant="outlined"
-        sx={{
-          '& .MuiInputBase-input': { color: '#fff' },
-          '& .MuiInputLabel-root': { color: '#fff' },
-          '& .MuiOutlinedInput-root': {
-            '& fieldset': { borderColor: '#fff' },
-            '&:hover fieldset': { borderColor: '#fff' },
-            '&.Mui-focused fieldset': { borderColor: '#E4B912' },
-          },
-        }}
+        value={group}
+        onChange={(e) => setGroup(e.target.value)}
+        sx={inputStyles}
       />
-      <Button size="medium" variant="contained" color="success">
+      <TextField
+        id="outlined-basic-5"
+        label="Contact Number"
+        variant="outlined"
+        value={contact}
+        onChange={(e) => setcontact(e.target.value)}
+        sx={inputStyles}
+      />
+      <TextField
+        id="outlined-basic-6"
+        label="Pancard Number"
+        variant="outlined"
+        value={pancard}
+        onChange={(e) => setpancard(e.target.value)}
+        sx={inputStyles}
+      />
+      <Button
+        size="medium"
+        variant="contained"
+        color="success"
+        type="submit"
+        sx={buttonStyles}
+      >
         Submit
       </Button>
     </Box>
   );
 };
 
-export default addClient;
+export default AddClient;
