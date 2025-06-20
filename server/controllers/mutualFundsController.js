@@ -297,7 +297,7 @@ exports.getSchemesCaching = async (req, res) => {
       amfiCode,
       schemeName
     }));
-
+    console.log(result);
     res
       .status(200)
       .json({ status: 'success', length: result.length, data: result });
