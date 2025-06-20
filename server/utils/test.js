@@ -10,10 +10,14 @@ const client = createClient({
 
 client.on('error', err => console.error('Redis Client Error:', err));
 
-async function connectRedis() {
-  if (!client.isOpen) {
+(async () => {
+  try {
     await client.connect();
+    console.log('Connected to Redis!');
+    const pong = await client.ping();
+    console.log('Ping response:', pong);
+    await client.disconnect();
+  } catch (err) {
+    console.error('Connection failed:', err);
   }
-}
-
-module.exports = { client, connectRedis };
+})();
