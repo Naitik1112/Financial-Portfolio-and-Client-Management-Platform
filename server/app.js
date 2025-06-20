@@ -35,7 +35,7 @@ app.use(
 
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'http://localhost:5173'], // Allow both frontend ports
+    origin: ['http://localhost:3000', 'http://localhost:5173', process.env.FRONTEND_URL], // Allow both frontend ports
     credentials: true // Allow cookies
   })
 );
