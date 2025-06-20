@@ -1,6 +1,8 @@
 // import { useState } from 'react'
 // import reactLogo from './assets/react.svg'
 // import viteLogo from '/vite.svg'
+import { useEffect } from 'react';
+import axios from 'axios';
 import {Routes, Route} from 'react-router-dom'
 import Home from './pages/Home/Home'
 import Navbar from './components/Navbar/Navbar'
@@ -29,7 +31,14 @@ import Redemption from './pages/redemption'
 // import './App.css'
 
 function App() {
-
+  useEffect(() => {
+    const token = localStorage.getItem('jwt');
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common['Authorization'];
+    }
+  }, []);
   return (
     <>
       <div className='App' >

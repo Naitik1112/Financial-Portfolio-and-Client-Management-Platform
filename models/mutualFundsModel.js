@@ -34,15 +34,18 @@ const mfSchema = new mongoose.Schema({
   },
   nominee1Id: {
     type: mongoose.Schema.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    required: [false]
   },
   nominee2Id: {
     type: mongoose.Schema.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    required: [false]
   },
   nominee3Id: {
     type: mongoose.Schema.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    required: [false]
   },
   investmentType: {
     type: String,
@@ -130,7 +133,12 @@ const mfSchema = new mongoose.Schema({
 async function fetchNAV(AMFI, targetDate) {
   try {
     const url = `https://api.mfapi.in/mf/${AMFI}`;
-    const response = await axios.get(url);
+    const response = await axios.get(url, {
+      // Override headers to remove Authorization for this request
+      headers: {
+        Authorization: undefined
+      }
+    });
 
     if (!response.data?.data?.length) {
       throw new Error('No NAV data available for the given AMFI code');
@@ -178,7 +186,12 @@ async function fetchNAV(AMFI, targetDate) {
 async function getCurrentNAV(AMFI) {
   try {
     const url = `https://api.mfapi.in/mf/${AMFI}`;
-    const response = await axios.get(url);
+    const response = await axios.get(url, {
+      // Override headers to remove Authorization for this request
+      headers: {
+        Authorization: undefined
+      }
+    });
 
     if (!response.data?.data?.length) {
       throw new Error('No NAV data available');
@@ -300,7 +313,9 @@ async function calculateCurrentValue(next) {
 // Enhanced update middleware
 async function handleUpdates(next) {
   try {
+    console.log(this._skipHooks);
     if (this._skipHooks) return next();
+    console.log('In model');
     const update = this.getUpdate();
     const doc = await this.model.findOne(this.getQuery());
 
@@ -380,6 +395,41 @@ async function handleUpdates(next) {
       const currentNAV = await getCurrentNAV(AMFI);
       const totalUnits = transactions.reduce((sum, txn) => sum + txn.units, 0);
       update.$set.currentValue = totalUnits * currentNAV;
+    } else if (doc.investmentType === 'lumpsum') {
+      console.log('passed1');
+      const hasLumpsumChanges =
+        (update.AMFI && update.AMFI !== doc.AMFI) ||
+        (update.lumpsumAmount && update.lumpsumAmount !== doc.lumpsumAmount) ||
+        (update.lumpsumDate &&
+          new Date(update.lumpsumDate).getTime() !== doc.lumpsumDate.getTime());
+
+      if (hasLumpsumChanges) {
+        const AMFI = update.AMFI || doc.AMFI;
+        const lumpsumAmount = update.lumpsumAmount || doc.lumpsumAmount;
+        const lumpsumDate = update.lumpsumDate
+          ? new Date(update.lumpsumDate)
+          : doc.lumpsumDate;
+
+        try {
+          console.log('passed2');
+          const navOnLumpsumDate = await fetchNAV(AMFI, lumpsumDate);
+          const units = parseFloat(
+            (lumpsumAmount / navOnLumpsumDate).toFixed(8)
+          );
+
+          const currentNAV = await getCurrentNAV(AMFI);
+          const currentValue = parseFloat((units * currentNAV).toFixed(2));
+          console.log('new units : ', units);
+          console.log(currentValue);
+          update.$set = update.$set || {};
+          update.lumpsumUnits = units;
+          update.lastUpdated = new Date();
+          update.$set.currentValue = currentValue;
+          console.log('newest : ', update.lumpsumUnits);
+        } catch (err) {
+          console.warn(`Failed to update lumpsum details: ${err.message}`);
+        }
+      }
     }
 
     this.setUpdate(update);

@@ -50,8 +50,13 @@ function CustomTable({ data, columns, variable1, onDeleteSuccess , onDelete}) {
     if (!confirmDelete) return;
 
     try {
+      const token = localStorage.getItem('jwt');
+
       const response = await fetch(`/api/v1/${onDelete}/${_id}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
 
       if (!response.ok) {

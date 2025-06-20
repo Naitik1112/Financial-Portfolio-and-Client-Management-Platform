@@ -7,6 +7,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Cookies from 'js-cookie'; // Import js-cookie to handle JWT
 import Hamburger from './../../assets/Hamburger.png';
 import Brand from './../../assets/logo1.png';
+import axios from 'axios';
 import "./Navbar.css"; // Assuming you have a CSS file for styling
 
 const Navbar = () => {
@@ -15,7 +16,7 @@ const Navbar = () => {
 
   useEffect(() => {
     // Update JWT state when route changes
-    setJwtExists(!!Cookies.get('jwt'));
+    setJwtExists(!!localStorage.getItem('jwt'));
   }, [location.pathname]);
 
   const handleLogout = async () => {
@@ -30,9 +31,15 @@ const Navbar = () => {
         method: "GET",
         credentials: "include", // Ensures cookies are sent with the request
       });
-  
+
+      // delete axios.defaults.headers.common['Authorization'];
+      //   localStorage.removeItem('jwt');// Remove JWT from cookies
+      //   setJwtExists(false);
+      //   window.location.href = "/signin";
+      
       if (response.ok) {
-        Cookies.remove("jwt"); // Remove JWT from cookies
+        delete axios.defaults.headers.common['Authorization'];
+        localStorage.removeItem('jwt');// Remove JWT from cookies
         setJwtExists(false);
         window.location.href = "/signin"; // Redirect to sign-in page
       } else {

@@ -9,7 +9,6 @@ const formatDate = isoDate => {
 // Fetch Debt Funds and format dates
 export const fetchDebtsWithNAV = async userId => {
   try {
-    console.log(userId);
     const response = await axios.get(
       `/api/v1/debt/user/${userId}`
     );

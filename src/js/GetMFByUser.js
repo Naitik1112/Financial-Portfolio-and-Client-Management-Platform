@@ -10,9 +10,18 @@ export const fetchMutualFundsWithNAV = async userId => {
     const updatedDataPromises = mutualFundsData.map(async fund => {
       try {
         const amfiCode = fund.AMFI;
+        console.log(amfiCode);
+        console.log(`https://api.mfapi.in/mf/${amfiCode}/latest`);
         const navResponse = await axios.get(
-          `https://api.mfapi.in/mf/${amfiCode}/latest`
+          `https://api.mfapi.in/mf/${amfiCode}/latest`,
+          {
+            // Override headers to remove Authorization for this request
+            headers: {
+              Authorization: undefined
+            }
+          }
         );
+        console.log(navResponse);
         const currNAV = parseFloat(navResponse.data.data[0]?.nav || 0);
 
         // Calculate total invested amount

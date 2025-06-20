@@ -31,7 +31,14 @@ const UserDetails = ({ id }) => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch(`/api/v1/users/${id}`);
+        const token = localStorage.getItem('jwt');
+        const response = await fetch(`/api/v1/users/${id}`, {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         const data = await response.json();
         const user = data.data.data;
 

@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { fetchMutualFundsWithNAV } from './../js/GetMFByUser'
 import Typography from '@mui/material/Typography';
 import Autocomplete from '@mui/material/Autocomplete';
 import { inputStyles, buttonStyles, containerStyles } from "./../styles/themeStyles";
@@ -13,8 +14,9 @@ const reportType = [
   { label: 'General Insurance of Client' },
   { label: 'Debts of Client' },
   { label: 'Mutual Funds of Client' },
+  { label: 'Scheme wise - Valution Report' },
   { label: 'CashFlow of Client' },
-  { label: 'Claims of Client' }
+  { label: 'Claims of Client' },
 ];
 
 const type = [
@@ -27,6 +29,41 @@ const AddClient = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [downloadFormat, setDownloadFormat] = useState(null);
   const [top100Films, setTop100Films] = useState([]);
+  const [schemeOptions, setSchemeOptions] = useState([]);
+  const [selectedScheme, setSelectedScheme] = useState(null);
+
+  useEffect(() => {
+  const fetchSchemes = async () => {
+    if (
+      holderName &&
+      selectedReport?.label === "Scheme wise - Valution Report"
+    ) {
+      try {
+        const data = await fetchMutualFundsWithNAV(holderName.id);
+
+        const schemeMap = new Map();
+
+        data.forEach((item) => {
+          const key = `${item.name}`; // Unique combination
+          if (!schemeMap.has(key)) {
+            schemeMap.set(key, { label: item.name, id: item._id });
+          }
+        });
+        console.log(schemeMap)
+        const schemes = Array.from(schemeMap.values());
+        setSchemeOptions(schemes);
+
+      } catch (error) {
+        console.error("Failed to fetch schemes:", error);
+      }
+    } else {
+      setSchemeOptions([]); // Clear schemes if not relevant
+    }
+  };
+
+  fetchSchemes();
+}, [holderName, selectedReport]);
+
 
   useEffect(() => {
     const fetchUserNames = async () => {
@@ -37,7 +74,7 @@ const AddClient = () => {
 
         // Access nested array and map the user names
         if (data?.data?.data) {
-          const userNames = data.data.data.map((user) => ({ label: user.name }));
+          const userNames = data.data.data.map((user) => ({ label: user.name ,id: user._id, }));
           setTop100Films(userNames);
         } else {
           throw new Error('Unexpected response structure');
@@ -70,6 +107,8 @@ const AddClient = () => {
       apiUrl = '/api/v1/reports/debtsByClient';
     } else if (selectedReport.label === 'CashFlow of Client'){
       apiUrl = '/api/v1/reports/cashFlowReport'
+    } else if (selectedReport.label === 'Scheme wise - Valution Report') {
+      apiUrl = '/api/v1/reports/schemeValuation'; 
     } else if (selectedReport.label === 'Claims of Client'){
       apiUrl = '/api/v1/reports/claimsByClient'
     }
@@ -79,9 +118,19 @@ const AddClient = () => {
     }
   
     const payload = {
-      name: holderName.label,
+      name_label : holderName.label,
+      name : holderName.id,
       format: downloadFormat.value,
     };
+
+    // For scheme-wise report, add scheme ID
+    if (selectedReport.label === "Scheme wise - Valution Report") {
+      if (!selectedScheme) {
+        alert("Please select a scheme for the valuation report.");
+        return;
+      }
+      payload.schemeId = selectedScheme.id;
+    }
   
     try {
       const response = await fetch(apiUrl, {
@@ -96,7 +145,7 @@ const AddClient = () => {
   
       const blob = await response.blob();
       const fileExtension = downloadFormat.value === 'pdf' ? 'pdf' : 'xlsx';
-      const fileName = `${holderName.label}_claim_report.${fileExtension}`;
+      const fileName = `${holderName.label}_${selectedReport.label}.${fileExtension}`;
       const fileUrl = window.URL.createObjectURL(blob); // Changed variable name to fileUrl
   
       const a = document.createElement('a');
@@ -172,6 +221,24 @@ const AddClient = () => {
           },
         }}
       />
+
+      {selectedReport?.label === "Scheme wise - Valution Report" && (
+        <Autocomplete
+          sx={inputStyles}
+          disablePortal
+          options={schemeOptions}
+          onChange={(event, value) => setSelectedScheme(value)}
+          renderInput={(params) => <TextField {...params} label="Scheme Name" />}
+          componentsProps={{
+            paper: {
+              sx: {
+                bgcolor: "grey",
+                color: "black",
+              },
+            },
+          }}
+        />
+      )}
 
 
       <Autocomplete

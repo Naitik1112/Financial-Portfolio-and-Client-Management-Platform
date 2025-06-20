@@ -12,34 +12,36 @@ const CatchAsync = require('./../utils/catchAsync');
 const generatePDF = require('./../utils/generatePDF');
 const generateExcel = require('./../utils/generateExcel');
 
+const dayjs = require('dayjs');
+
 // @ts-ignore
 const { calculateXirr } = require('./../utils/xirr');
 
 // const { xirr } = require('xirr');
 
 exports.getUserId = CatchAsync(async (req, res, next) => {
-  const { name, format } = req.body; // Expect 'format' to specify pdf or excel
+  // const { name, format } = req.body; // Expect 'format' to specify pdf or excel
 
-  // Step 1: Validate input
-  if (!name) {
-    return res.status(400).json({
-      status: 'fail',
-      message: 'Client name is required'
-    });
-  }
+  // // Step 1: Validate input
+  // if (!name) {
+  //   return res.status(400).json({
+  //     status: 'fail',
+  //     message: 'Client name is required'
+  //   });
+  // }
 
-  // Step 2: Find the user by name
-  const user = await User.findOne({ name });
-  if (!user) {
-    return res.status(404).json({
-      status: 'fail',
-      message: `No user found with the name: ${name}`
-    });
-  }
+  // // Step 2: Find the user by name
+  // const user = await User.findOne({ name });
+  // if (!user) {
+  //   return res.status(404).json({
+  //     status: 'fail',
+  //     message: `No user found with the name: ${name}`
+  //   });
+  // }
 
-  req.userId = user._id; // Extract the user's ID
-  req.format = format;
-  req.name = name;
+  req.userId = req.body.name; // Extract the user's ID
+  req.format = req.body.format;
+  req.name = req.body.name_label;
   next();
 });
 
@@ -251,7 +253,13 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
     const formattedSchemes = await Promise.all(
       schemes.map(async scheme => {
         const navRes = await fetch(
-          `https://api.mfapi.in/mf/${scheme.AMFI}/latest`
+          `https://api.mfapi.in/mf/${scheme.AMFI}/latest`,
+          {
+            // Override headers to remove Authorization for this request
+            headers: {
+              Authorization: undefined
+            }
+          }
         );
         if (!navRes.ok)
           throw new Error(`Failed to fetch NAV: ${navRes.statusText}`);
@@ -430,6 +438,175 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'An error occurred while generating the report',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
+  try {
+    const fetch = (...args) =>
+      import('node-fetch').then(({ default: fetch }) => fetch(...args));
+
+    const { name: holderId, schemeId, format, name_label } = req.body;
+
+    if (!holderId || !schemeId) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Holder ID and Scheme ID are required'
+      });
+    }
+
+    // Get the target scheme to extract its AMFI code
+    const targetScheme = await Mutual.findOne({
+      _id: schemeId,
+      holderId
+    }).lean();
+    if (!targetScheme) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Scheme not found for the provided holder'
+      });
+    }
+
+    const targetAMFI = targetScheme.AMFI;
+
+    // ✅ Fetch all schemes with the same AMFI and holder
+    const schemes = await Mutual.find({ AMFI: targetAMFI, holderId })
+      .populate('holderId', 'name email')
+      .lean();
+
+    if (!schemes || schemes.length === 0) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No matching schemes found for AMFI and holder'
+      });
+    }
+
+    // ✅ Get NAV and date
+    const navRes = await fetch(`https://api.mfapi.in/mf/${targetAMFI}/latest`);
+    if (!navRes.ok)
+      throw new Error(`Failed to fetch NAV: ${navRes.statusText}`);
+    const navData = await navRes.json();
+
+    const latestNAV = parseFloat(navData.data[0]?.nav || '0');
+    const last_date = navData.data[0]?.date || 'N/A';
+    const now = new Date();
+
+    const calculateCAGR = (initialAmount, finalAmount, startDate) => {
+      const years = (now - new Date(startDate)) / (1000 * 60 * 60 * 24 * 365);
+      if (initialAmount <= 0 || years <= 0) return 0;
+      return (Math.pow(finalAmount / initialAmount, 1 / years) - 1) * 100;
+    };
+
+    // ✅ Aggregate transactions from all schemes
+    const transactions = [];
+
+    for (const scheme of schemes) {
+      if (scheme.investmentType === 'sip') {
+        for (const txn of scheme.sipTransactions || []) {
+          const date = new Date(txn.date);
+          const amount = txn.amount;
+          const nav = txn.nav;
+          const units = txn.units;
+          const currentAmount = units * latestNAV;
+          const duration = ((now - date) / (1000 * 60 * 60 * 24 * 365)).toFixed(
+            2
+          );
+          const cagr = calculateCAGR(amount, currentAmount, date);
+
+          transactions.push({
+            date: dayjs(date).format('YYYY-MM-DD'),
+            amountInvested: amount.toFixed(2),
+            navAtDate: nav.toFixed(4),
+            units: units.toFixed(4),
+            currentAmount: currentAmount.toFixed(2),
+            latestNAV: latestNAV.toFixed(4),
+            duration: `${duration} yrs`,
+            cagr: `${cagr.toFixed(2)}%`
+          });
+        }
+      } else if (scheme.investmentType === 'lumpsum') {
+        const date = new Date(scheme.lumpsumDate);
+        const amount = scheme.lumpsumAmount;
+        const units = scheme.lumpsumUnits;
+        const nav = amount / units;
+        const currentAmount = units * latestNAV;
+        const duration = ((now - date) / (1000 * 60 * 60 * 24 * 365)).toFixed(
+          2
+        );
+        const cagr = calculateCAGR(amount, currentAmount, date);
+
+        transactions.push({
+          date: dayjs(date).format('YYYY-MM-DD'),
+          amountInvested: amount.toFixed(2),
+          navAtDate: nav.toFixed(4),
+          units: units.toFixed(4),
+          currentAmount: currentAmount.toFixed(2),
+          latestNAV: latestNAV.toFixed(4),
+          duration: `${duration} yrs`,
+          cagr: `${cagr.toFixed(2)}%`
+        });
+      }
+    }
+
+    transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const transactionFields = [
+      { label: 'Date', value: 'date' },
+      { label: 'Amount Invested', value: 'amountInvested', format: 'currency' },
+      { label: 'NAV at Date', value: 'navAtDate' },
+      { label: 'Units Bought', value: 'units' },
+      { label: 'Current Amount', value: 'currentAmount', format: 'currency' },
+      { label: `Latest NAV (${last_date})`, value: 'latestNAV' },
+      { label: 'Duration', value: 'duration' },
+      { label: 'CAGR', value: 'cagr', format: 'percentage' }
+    ];
+
+    const reportTitle = `Valuation Report of ${name_label} - ${targetScheme.schemeName}`;
+    const reportDate = new Date().toLocaleDateString('en-IN');
+    const clientName = schemes[0]?.holderId?.name || 'Client';
+
+    if (format === 'pdf') {
+      const pdfPath = path.join(__dirname, 'transactions_report.pdf');
+      await generatePDF(
+        transactions,
+        pdfPath,
+        res,
+        transactionFields,
+        reportTitle,
+        reportDate,
+        clientName
+      );
+    } else if (format === 'excel') {
+      const excelPath = path.join(__dirname, 'transactions_report.xlsx');
+      await generateExcel(
+        transactions,
+        excelPath,
+        res,
+        transactionFields,
+        reportTitle,
+        reportDate,
+        clientName
+      );
+    } else {
+      return res.status(200).json({
+        status: 'success',
+        data: {
+          reportDate,
+          clientName,
+          amfi: targetAMFI,
+          schemeName: targetScheme.schemeName,
+          fundHouse: targetScheme.fundHouse,
+          transactions
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error generating scheme valuation report:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error generating report',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

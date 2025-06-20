@@ -12,9 +12,14 @@ const App = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
+        const token = localStorage.getItem('jwt');
+        
         const response = await fetch("/api/v1/users/", {
           method: "GET",
           credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         });
         const data = await response.json();
         setCustomers(data.data.data);

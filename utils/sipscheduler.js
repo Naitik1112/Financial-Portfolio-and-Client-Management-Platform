@@ -6,7 +6,12 @@ const MutualFunds = require('../models/mutualFundsModel'); // Adjust path if nee
 
 async function fetchNAV(amfi) {
   const apiUrl = `https://api.mfapi.in/mf/${amfi}`;
-  const response = await axios.get(apiUrl);
+  const response = await axios.get(apiUrl, {
+    // Override headers to remove Authorization for this request
+    headers: {
+      Authorization: undefined
+    }
+  });
   if (response.status === 200 && response.data && response.data.data) {
     const today = new Date();
     let nav = null;

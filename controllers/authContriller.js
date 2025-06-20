@@ -37,9 +37,10 @@ const createSendToken = (user, statusCode, res) => {
   // Remove password from output
   user.password = undefined;
 
-  res.cookie('jwt', token, cookieOptions);
-  // console.log('Set-Cookie Header:', res.getHeaders()['set-cookie']); // Debug
-  res.status(statusCode).json({ status: 'success', token });
+  res.status(statusCode).json({
+    status: 'success',
+    token
+  });
 };
 
 exports.signup = catchAsync(async (req, res, next) => {
@@ -64,7 +65,7 @@ exports.login = catchAsync(async (req, res, next) => {
   }
 
   const user = await User.findOne({ email }).select('+password');
-
+  console.log(req.body);
   if (!user || !(await user.correctPassword(password, user.password))) {
     return next(new AppError('Either email or Password is incorrect', 400));
   }

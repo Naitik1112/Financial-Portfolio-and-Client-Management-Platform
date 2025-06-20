@@ -59,6 +59,22 @@ const EditMutualFund = () => {
   const [originalData, setOriginalData] = useState({});
   const { id } = useParams();
 
+  const [allSchemes, setAllSchemes] = useState([]);
+
+  useEffect(() => {
+    const fetchSchemes = async () => {
+      try {
+        const response = await fetch('/api/v1/mutualFunds/autocomplete');
+        const data = await response.json();
+        setAllSchemes(data?.data || []);
+      } catch (error) {
+        console.error('Failed to fetch mutual fund schemes:', error);
+      }
+    };
+    fetchSchemes();
+  }, []);
+
+
   // Fetch mutual fund data and users
   useEffect(() => {
     const fetchData = async () => {
@@ -79,22 +95,21 @@ const EditMutualFund = () => {
             ? mfData.sipTransactions?.flatMap(tx => tx.redemptions || []) || []
             : mfData.redemptions || [];
 
-          // Step 2: Aggregate redemptions by full timestamp
           const redemptionMap = {};
 
           for (const r of redemptions) {
-            const key = new Date(r.date).toISOString(); // full precision key
+            const key = new Date(r.date).toISOString().split('T')[0]; // get only date part
 
             if (!redemptionMap[key]) {
-              redemptionMap[key] = { ...r };
+              redemptionMap[key] = { ...r, date: key }; // overwrite date to only YYYY-MM-DD
             } else {
               redemptionMap[key].units += r.units || 0;
-              redemptionMap[key].amount += r.amount || 0; // optional: aggregate amount too
+              redemptionMap[key].amount += r.amount || 0;
             }
           }
 
           const allRedemptions = Object.values(redemptionMap);
-
+          console.log("mfData",mfData)
           
           const initialData = {
             AMFI: mfData.AMFI || '',
@@ -146,7 +161,13 @@ const EditMutualFund = () => {
     if (!code) return;
     
     try {
-      const response = await fetch(`https://api.mfapi.in/mf/${code}/latest`);
+      const response = await fetch(`https://api.mfapi.in/mf/${code}/latest`,
+          {
+            // Override headers to remove Authorization for this request
+            headers: {
+              Authorization: undefined
+            }
+          });
       const data = await response.json();
 
       if (data.status === 'SUCCESS' && data.meta) {
@@ -213,7 +234,7 @@ const EditMutualFund = () => {
       sipEndDate: formData.sipEndDate?.format('YYYY-MM-DD'),
       lumpsumDate: formData.lumpsumDate?.format('YYYY-MM-DD')
     };
-
+    
     try {
       const response = await axios.patch(`/api/v1/mutualFunds/${id}`, payload);
       
@@ -265,30 +286,43 @@ const EditMutualFund = () => {
       }}>
         {/* Left Column - Common Fields */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '45ch' }}>
-          <TextField
-            label="AMFI Code"
-            variant="outlined"
-            value={formData.AMFI}
-            onChange={(e) => handleChange('AMFI', e.target.value)}
+          <Autocomplete
+            options={allSchemes}
+            getOptionLabel={(option) => option.schemeName}
+            value={allSchemes.find((s) => s.schemeName === formData.schemeName) || null}
+            onChange={(_, selected) => {
+              if (selected) {
+                const fundHouse = selected.schemeName.includes('-')
+                  ? selected.schemeName.split('-')[0].trim()
+                  : 'N/A';
+
+                setFormData(prev => ({
+                  ...prev,
+                  AMFI: selected.amfiCode,
+                  schemeName: selected.schemeName,
+                  fundHouse
+                }));
+              } else {
+                setFormData(prev => ({
+                  ...prev,
+                  AMFI: '',
+                  schemeName: '',
+                  fundHouse: ''
+                }));
+              }
+            }}
+            renderInput={(params) => <TextField {...params} label="Scheme Name" variant="outlined" />}
             sx={inputStyles}
+            componentsProps={{
+              paper: {
+                sx: {
+                  bgcolor: 'grey',
+                  color: 'black',
+                },
+              },
+            }}
           />
-          
-          <TextField
-            label="Scheme Name"
-            variant="outlined"
-            value={formData.schemeName}
-            InputProps={{ readOnly: true }}
-            sx={inputStyles}
-          />
-          
-          <TextField
-            label="Fund House"
-            variant="outlined"
-            value={formData.fundHouse}
-            InputProps={{ readOnly: true }}
-            sx={inputStyles}
-          />
-          
+                    
           <Autocomplete
             options={investmentTypes}
             getOptionLabel={(option) => option.label}
@@ -445,6 +479,16 @@ const EditMutualFund = () => {
         </Box>
       </Box>
 
+      <Button 
+        size="large" 
+        variant="contained" 
+        onClick={handleSubmit}
+        disabled={isSubmitting}
+        sx={buttonStyles}
+      >
+        {isSubmitting ? 'Updating...' : 'Update Details'}
+      </Button>
+
       {/* Transactions Section - Only for SIP */}
       {formData.investmentType === 'sip' && formData.sipTransactions.length > 0 && (
         <Box sx={{ width: '100%', mt: 4 }}>
@@ -525,16 +569,6 @@ const EditMutualFund = () => {
           </TableContainer>
         </Box>
       )}
-
-      <Button 
-        size="large" 
-        variant="contained" 
-        onClick={handleSubmit}
-        disabled={isSubmitting}
-        sx={buttonStyles}
-      >
-        {isSubmitting ? 'Updating...' : 'Update Details'}
-      </Button>
     </Box>
   );
 };

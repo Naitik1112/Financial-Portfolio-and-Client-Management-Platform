@@ -4,6 +4,12 @@ const catchAsync = require('./../utils/catchAsync');
 const factory = require('./handlerFactory');
 const User = require('./../models/userModels');
 
+const path = require('path');
+const { exec } = require('child_process');
+const redisClient = require('../utils/redisClient');
+
+const getMutualFundsFromPython = require('../utils/fetchFunds');
+
 const findIdByName = async name => {
   const fund = await User.findOne({ name });
   if (!fund) {
@@ -95,18 +101,22 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
     const mf = await MF.findOne({ _id: mfId });
 
     if (!mf) {
-      return res.status(404).json({ message: `Mutual fund not found: ${mfId}` });
+      return res
+        .status(404)
+        .json({ message: `Mutual fund not found: ${mfId}` });
     }
 
     // Calculate current NAV
-    const nav = 
+    const nav =
       mf.currentValue && mf.investmentType === 'lumpsum'
         ? mf.currentValue / mf.lumpsumUnits
         : mf.currentValue /
           mf.sipTransactions.reduce((sum, tx) => sum + (tx.units || 0), 0);
 
     if (!nav || isNaN(nav)) {
-      return res.status(400).json({ message: `Unable to get NAV for mutual fund ${mfId}` });
+      return res
+        .status(400)
+        .json({ message: `Unable to get NAV for mutual fund ${mfId}` });
     }
 
     let taxForThisFund = 0;
@@ -117,11 +127,19 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
       const availableUnits = mf.lumpsumUnits - alreadyRedeemed;
 
       if (unitsToRedeem > availableUnits) {
-        return res.status(400).json({ message: `Not enough units in lumpsum for ${mf.schemeName}` });
+        return res.status(400).json({
+          message: `Not enough units in lumpsum for ${mf.schemeName}`
+        });
       }
 
       const purchaseNAV = mf.lumpsumAmount / mf.lumpsumUnits;
-      const tax = calculateTax(new Date(mf.lumpsumDate), new Date(), unitsToRedeem, nav, purchaseNAV);
+      const tax = calculateTax(
+        new Date(mf.lumpsumDate),
+        new Date(),
+        unitsToRedeem,
+        nav,
+        purchaseNAV
+      );
       taxForThisFund += tax.tax;
 
       await MF.updateOne(
@@ -154,7 +172,13 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
         if (available <= 0) continue;
 
         const redeemNow = Math.min(unitsToRedeem, available);
-        const tax = calculateTax(new Date(tx.date), new Date(), redeemNow, nav, tx.nav);
+        const tax = calculateTax(
+          new Date(tx.date),
+          new Date(),
+          redeemNow,
+          nav,
+          tx.nav
+        );
         taxForThisFund += tax.tax;
 
         bulkOps.push({
@@ -201,7 +225,6 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
   });
 });
 
-
 exports.getAllLifePolicy = factory.getAll(MF);
 exports.getLifePolicy = factory.getOne(MF, {
   path: 'holderId nominee1Id nominee2Id nominee3Id'
@@ -209,3 +232,70 @@ exports.getLifePolicy = factory.getOne(MF, {
 exports.updateLifePolicy = factory.updateOne(MF);
 exports.deleteLifePolicy = factory.deleteOne(MF);
 exports.createLifePolicy = factory.createOne(MF);
+
+exports.getAllMutualFunds = async (req, res) => {
+  try {
+    const data = await getMutualFundsFromPython();
+    // Convert { amfiCode: schemeName } → [{ amfiCode, schemeName }]
+    const formatted = Object.entries(data).map(([amfiCode, schemeName]) => ({
+      amfiCode,
+      schemeName
+    }));
+
+    res.status(200).json({ status: 'success', data1: data });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err });
+  }
+};
+
+exports.refreshAmfiSchemeCache = (req, res) => {
+  const scriptPath = path.join(__dirname, './../python/fetch_amfi_data.py');
+  const pythonPath = process.env.PYTHON_PATH || 'python';
+
+  exec(
+    `${pythonPath} "${scriptPath}"`,
+    { maxBuffer: 1024 * 1024 * 5 },
+    async (err, stdout, stderr) => {
+      if (err)
+        return res.status(500).json({ status: 'error', message: stderr });
+
+      try {
+        const schemeMap = JSON.parse(stdout); // { amfiCode: schemeName }
+        await redisClient.set('amfi_scheme_map', JSON.stringify(schemeMap), {
+          EX: 86400
+        }); // expire after 1 day
+        res.status(200).json({
+          status: 'success',
+          message: 'Cache refreshed',
+          count: Object.keys(schemeMap).length
+        });
+      } catch (e) {
+        res
+          .status(500)
+          .json({ status: 'error', message: 'JSON parse or Redis error' });
+      }
+    }
+  );
+};
+
+exports.getSchemesCaching = async (req, res) => {
+  try {
+    const cached = await redisClient.get('amfi_scheme_map');
+    if (!cached)
+      return res
+        .status(404)
+        .json({ status: 'error', message: 'Scheme list not cached.' });
+
+    const schemeMap = JSON.parse(cached);
+    const result = Object.entries(schemeMap).map(([amfiCode, schemeName]) => ({
+      amfiCode,
+      schemeName
+    }));
+
+    res
+      .status(200)
+      .json({ status: 'success', length: result.length, data: result });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+};

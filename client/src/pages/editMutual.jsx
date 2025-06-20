@@ -75,7 +75,13 @@ const EditPolicy = () => {
 
   const fetchPolicyDetails = async (code) => {
     try {
-      const response = await fetch(`https://api.mfapi.in/mf/${code}/latest`);
+      const response = await fetch(`https://api.mfapi.in/mf/${code}/latest`,
+          {
+            // Override headers to remove Authorization for this request
+            headers: {
+              Authorization: undefined
+            }
+          });
       const data = await response.json();
 
       // Check if status is SUCCESS and meta is not empty

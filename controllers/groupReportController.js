@@ -63,7 +63,13 @@ exports.getSchemeByGroup = CatchAsync(async (req, res) => {
   const fetchNAV = async AMFI => {
     try {
       const response = await axios.get(
-        `https://api.mfapi.in/mf/${AMFI}/latest`
+        `https://api.mfapi.in/mf/${AMFI}/latest`,
+          {
+            // Override headers to remove Authorization for this request
+            headers: {
+              Authorization: undefined
+            }
+          }
       );
       if (
         response.data?.status === 'SUCCESS' &&

@@ -38,6 +38,8 @@ const AddPolicy = () => {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mfOptions, setMfOptions] = useState([]);
+
 
   // Fetch users for dropdowns
   useEffect(() => {
@@ -55,12 +57,34 @@ const AddPolicy = () => {
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    const fetchMutualFunds = async () => {
+      try {
+        const response = await fetch('/api/v1/mutualFunds/autocomplete');
+        const data = await response.json();
+        if (data && data.data) {
+          setMfOptions(data.data);  // Expected format: [{ amfiCode, schemeName }]
+        }
+      } catch (error) {
+        console.error('Error fetching mutual fund schemes:', error);
+      }
+    };
+    fetchMutualFunds();
+  }, []);
+
+
   // Fetch scheme details when AMFI code changes
   const fetchSchemeDetails = async (code) => {
     if (!code) return;
     
     try {
-      const response = await fetch(`https://api.mfapi.in/mf/${code}/latest`);
+      const response = await fetch(`https://api.mfapi.in/mf/${code}/latest`,
+          {
+            // Override headers to remove Authorization for this request
+            headers: {
+              Authorization: undefined
+            }
+          });
       const data = await response.json();
 
       if (data.status === 'SUCCESS' && data.meta) {
@@ -245,29 +269,42 @@ const AddPolicy = () => {
       <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 4, width: '100%' }}>
         {/* Left Column - Common Fields */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '45ch' }}>
-          <TextField
-            label="AMFI Code"
-            variant="outlined"
-            value={formData.AMFI}
-            onChange={(e) => handleChange('AMFI', e.target.value)}
+          <Autocomplete
+            options={mfOptions}
+            getOptionLabel={(option) => option.schemeName}
+            value={mfOptions.find(option => option.schemeName === formData.schemeName) || null}
+            onChange={(_, selected) => {
+              if (selected) {
+                const fundHouse = selected.schemeName?.split('-')[0]?.trim() || 'N/A';
+                setFormData(prev => ({
+                  ...prev,
+                  AMFI: selected.amfiCode,
+                  schemeName: selected.schemeName,
+                  fundHouse
+                }));
+              } else {
+                // Clear if user clears the field
+                setFormData(prev => ({
+                  ...prev,
+                  AMFI: '',
+                  schemeName: '',
+                  fundHouse: ''
+                }));
+              }
+            }}
+            renderInput={(params) => <TextField {...params} label="Mutual Fund Scheme" />}
             sx={inputStyles}
+            componentsProps={{
+              paper: {
+                sx: {
+                  bgcolor: 'grey',
+                  color: 'black',
+                },
+              },
+            }}
           />
-          
-          <TextField
-            label="Scheme Name"
-            variant="outlined"
-            value={formData.schemeName}
-            InputProps={{ readOnly: true }}
-            sx={inputStyles}
-          />
-          
-          <TextField
-            label="Fund House"
-            variant="outlined"
-            value={formData.fundHouse}
-            InputProps={{ readOnly: true }}
-            sx={inputStyles}
-          />
+
+
           
           <Autocomplete
             options={investmentTypes}

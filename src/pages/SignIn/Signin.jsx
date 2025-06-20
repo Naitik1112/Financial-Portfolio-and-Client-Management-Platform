@@ -46,7 +46,11 @@ const LoginPage = () => {
     axios
       .post("/api/v1/users/login", { email, password }, { withCredentials: true })
       .then((response) => {
-        // Handle successful response
+        // Store JWT in localStorage
+        const token = response.data.token;
+        localStorage.setItem('jwt', token);
+
+        // Show success message
         setAlertMessage("Login successful!");
         setAlertOpen(true);
 
