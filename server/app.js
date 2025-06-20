@@ -39,7 +39,8 @@ app.use(
       'http://localhost:3000',
       'http://localhost:5173',
       process.env.FRONTEND_URL,
-      'https://financial-portfolio-and-client-management-platform-1qibu6r3k.vercel.app/'
+      'https://financial-portfolio-and-client-management-platform-1qibu6r3k.vercel.app/',
+      'https://financial-portfolio-and-client.onrender.com'
     ], // Allow both frontend ports
     credentials: true // Allow cookies
   })
