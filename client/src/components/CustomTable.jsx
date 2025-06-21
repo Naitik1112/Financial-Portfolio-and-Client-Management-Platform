@@ -45,6 +45,8 @@ function CustomTable({ data, columns, variable1, onDeleteSuccess , onDelete}) {
     navigate(`/${variable1}/${_id}`);
   };
 
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+
   const handleDelete = async (_id) => {
     const confirmDelete = window.confirm("Are you sure you want to delete this record?");
     if (!confirmDelete) return;
@@ -52,7 +54,7 @@ function CustomTable({ data, columns, variable1, onDeleteSuccess , onDelete}) {
     try {
       const token = localStorage.getItem('jwt');
 
-      const response = await fetch(`/api/v1/${onDelete}/${_id}`, {
+      const response = await fetch(`${backendURL}/api/v1/${onDelete}/${_id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`
