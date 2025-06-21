@@ -28,12 +28,12 @@ const UserDetails = ({ id }) => {
   });
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
   
   // Fetch user data when the component loads
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const token = localStorage.getItem('jwt');
         const response = await fetch(`${backendURL}/api/v1/users/${id}`, {
           method: "GET",
           credentials: "include",
