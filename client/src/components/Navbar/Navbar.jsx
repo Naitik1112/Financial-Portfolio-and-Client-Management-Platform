@@ -29,28 +29,28 @@ const Navbar = () => {
     }
   
     try {
-      const response = await fetch(`${backendURL}api/v1/users/logout`, {
-        method: "GET",
-        credentials: "include", // Ensures cookies are sent with the request
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-      });
+      // const response = await fetch(`${backendURL}api/v1/users/logout`, {
+      //   method: "GET",
+      //   credentials: "include", // Ensures cookies are sent with the request
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     Authorization: `Bearer ${token}`
+      //   },
+      // });
 
-      // delete axios.defaults.headers.common['Authorization'];
+      delete axios.defaults.headers.common['Authorization'];
+      localStorage.removeItem('jwt');// Remove JWT from cookies
+      setJwtExists(false);
+      window.location.href = "/signin";
+      
+      // if (response.ok) {
+      //   delete axios.defaults.headers.common['Authorization'];
       //   localStorage.removeItem('jwt');// Remove JWT from cookies
       //   setJwtExists(false);
-      //   window.location.href = "/signin";
-      
-      if (response.ok) {
-        delete axios.defaults.headers.common['Authorization'];
-        localStorage.removeItem('jwt');// Remove JWT from cookies
-        setJwtExists(false);
-        window.location.href = "/signin"; // Redirect to sign-in page
-      } else {
-        console.error("Logout failed");
-      }
+      //   window.location.href = "/signin"; // Redirect to sign-in page
+      // } else {
+      //   console.error("Logout failed");
+      // }
     } catch (error) {
       console.error("Error logging out:", error);
     }
