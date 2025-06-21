@@ -68,9 +68,9 @@ const UserDetails = ({ id }) => {
   // Save changes and update user data
   const handleSave = async () => {
     try {
-      const response = await fetch(`/api/v1/users/${id}`, {
+      const response = await fetch(`${backendURL}/api/v1/users/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" , Authorization: `Bearer ${token}`},
         body: JSON.stringify(userData),
       });
 
