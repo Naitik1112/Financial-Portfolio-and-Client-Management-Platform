@@ -27,7 +27,8 @@ const AddFixedDeposit = () => {
   useEffect(() => {
     const fetchUserNames = async () => {
       try {
-        const response = await fetch('/api/v1/users/');
+        const backendURL = import.meta.env.VITE_BACKEND_URL;
+        const response = await fetch(`${backendURL}/api/v1/users/`);
         const data = await response.json();
 
         console.log('API Response:', data); // Log to check response structure

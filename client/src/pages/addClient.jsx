@@ -33,9 +33,11 @@ const AddClient = () => {
       password,
       passwordConfirm,
     };
-  
+
+    const backendURL = import.meta.env.VITE_BACKEND_URL;
+
     try {
-      const response = await fetch('/api/v1/users/addUser', {
+      const response = await fetch(`${backendURL}/api/v1/users/addUser`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

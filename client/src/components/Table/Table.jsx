@@ -8,13 +8,14 @@ const App = () => {
   const [sortColumn, setSortColumn] = useState(null);
   const [sortAsc, setSortAsc] = useState(true);
   const [customers, setCustomers] = useState([]);
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
 
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
         const token = localStorage.getItem('jwt');
         
-        const response = await fetch("/api/v1/users/", {
+        const response = await fetch(`${backendURL}/api/v1/users/`, {
           method: "GET",
           credentials: "include",
           headers: {

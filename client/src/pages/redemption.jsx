@@ -15,14 +15,12 @@ const AddClient = () => {
   const [hasFetched, setHasFetched] = useState(false);
   const [navMap, setNavMap] = useState({});
   const [loading, setLoading] = useState(false);
-
-
-
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
 
   useEffect(() => {
     const fetchUserNames = async () => {
       try {
-        const response = await fetch('/api/v1/users/');
+        const response = await fetch(`${backendURL}/api/v1/users/`);
         const data = await response.json();
         if (data?.data?.data) {
           const userNames = data.data.data.map((user) => ({ label: user.name, id: user._id }));
