@@ -9,8 +9,17 @@ const formatDate = isoDate => {
 // Fetch Debt Funds and format dates
 export const fetchGeneralInsWithNAV = async userId => {
   try {
+    const backendURL = import.meta.env.VITE_BACKEND_URL;
+    const token = localStorage.getItem('jwt');
+
     const response = await axios.get(
-      `/api/v1/generalInsurance/user/${userId}`
+      `${backendURL}/api/v1/generalInsurance/user/${userId}`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      }
     );
     console.log(response);
     if (response.data && response.data.status === 'success') {

@@ -2,8 +2,17 @@ import axios from 'axios';
 
 export const fetchMutualFundsWithNAV = async userId => {
   try {
+    const backendURL = import.meta.env.VITE_BACKEND_URL;
+    const token = localStorage.getItem('jwt');
+
     const mutualFundsResponse = await axios.get(
-      `/api/v1/mutualFunds/user/${userId}`
+      `${backendURL}/api/v1/mutualFunds/user/${userId}`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      }
     );
     const mutualFundsData = mutualFundsResponse.data.data.mutualFunds;
 

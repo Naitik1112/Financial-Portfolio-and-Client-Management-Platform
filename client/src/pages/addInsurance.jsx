@@ -40,6 +40,9 @@ const AddPolicy = () => {
   const [deathClaimDate, setDeathClaimDate] = useState(0);
   const [deathClaim, setDeathClaim] = useState(0);
 
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
+
   const handlePendingClaimYearsChange = (event) => {
     const value = Number(event.target.value);
     if (value >= 0) setPendingClaimYears(value); // Only update the input state
@@ -79,7 +82,12 @@ const AddPolicy = () => {
   useEffect(() => {
       const fetchUserNames = async () => {
         try {
-          const response = await fetch('/api/v1/users/');
+          const response = await fetch(`${backendURL}/api/v1/users/`, {
+            headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          });
           const data = await response.json();
            // Log to check response structure
   
@@ -143,10 +151,11 @@ const AddPolicy = () => {
         };
         
         console.log(formattedPolicyData)
-        const response = await fetch('/api/v1/lifeInsurance', {
+        const response = await fetch(`${backendURL}/api/v1/lifeInsurance`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
           },
           body: JSON.stringify(formattedPolicyData),
         });

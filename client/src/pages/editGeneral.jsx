@@ -39,10 +39,18 @@ const AddGeneral = () => {
   const [pendingPremiumYears, setPendingPremiumYears] = useState(0); // Store input value separately
   const [premiums, setPremiums] = useState(Array(0).fill({ year: "", premium1: "" }));
 
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
+
   useEffect(() => {
     const fetchPolicyData = async () => {
       try {
-        const response = await axios.get(`/api/v1/generalInsurance/${id}`);
+        const response = await axios.get(`${backendURL}/api/v1/generalInsurance/${id}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+        });
         const data = response.data.data.data;
         console.log(data)
         setClientId(data.clientId?.name || '');
@@ -140,7 +148,12 @@ const AddGeneral = () => {
   useEffect(() => {
       const fetchUserNames = async () => {
         try {
-          const response = await fetch('/api/v1/users/');
+          const response = await fetch(`${backendURL}/api/v1/users/`,{
+            headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          });
           const data = await response.json();
            // Log to check response structure
   
@@ -201,10 +214,11 @@ const AddGeneral = () => {
         
         console.log(formattedPolicyData)
 
-        const response = await fetch(`/api/v1/generalInsurance/${id}`, {
+        const response = await fetch(`${backendURL}/api/v1/generalInsurance/${id}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
           },
           body: JSON.stringify(formattedPolicyData),
         });

@@ -61,10 +61,18 @@ const EditMutualFund = () => {
 
   const [allSchemes, setAllSchemes] = useState([]);
 
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
+
   useEffect(() => {
     const fetchSchemes = async () => {
       try {
-        const response = await fetch('/api/v1/mutualFunds/autocomplete');
+        const response = await fetch(`${backendURL}/api/v1/mutualFunds/autocomplete`, {
+          headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+          },
+        });
         const data = await response.json();
         setAllSchemes(data?.data || []);
       } catch (error) {
@@ -80,14 +88,24 @@ const EditMutualFund = () => {
     const fetchData = async () => {
       try {
         // Fetch users
-        const usersResponse = await axios.get('/api/v1/users/');
+        const usersResponse = await axios.get(`${backendURL}/api/v1/users/`, {
+          headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+          },
+        } );
         if (usersResponse.data?.data?.data) {
           setUsers(usersResponse.data.data.data);
         }
 
         // Fetch mutual fund data if editing
         if (id) {
-          const mfResponse = await axios.get(`/api/v1/mutualFunds/${id}`);
+          const mfResponse = await axios.get(`${backendURL}/api/v1/mutualFunds/${id}`, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+          });
           const mfData = mfResponse.data.data.data;
 
           // Step 1: Flatten redemptions

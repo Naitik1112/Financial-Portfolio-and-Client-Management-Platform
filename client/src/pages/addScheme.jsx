@@ -41,12 +41,19 @@ const AddPolicy = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mfOptions, setMfOptions] = useState([]);
 
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
 
   // Fetch users for dropdowns
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch('/api/v1/users/');
+        const response = await fetch(`${backendURL}/api/v1/users/`, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+        });
         const data = await response.json();
         if (data?.data?.data) {
           setUsers(data.data.data);
@@ -61,7 +68,12 @@ const AddPolicy = () => {
   useEffect(() => {
     const fetchMutualFunds = async () => {
       try {
-        const response = await axios.get('/api/v1/mutualFunds/autocomplete');
+        const response = await axios.get(`${backendURL}/api/v1/mutualFunds/autocomplete`, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+        });
         console.log(response);
         const data = response.data; // ✅ CORRECT way to access JSON
         if (data && data.data) {
@@ -198,10 +210,11 @@ const AddPolicy = () => {
     }
 
     try {
-      const response = await fetch('/api/v1/mutualFunds', {
+      const response = await fetch(`${backendURL}/api/v1/mutualFunds`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify(payload),
       });

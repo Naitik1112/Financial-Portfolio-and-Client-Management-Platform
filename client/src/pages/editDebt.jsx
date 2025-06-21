@@ -19,11 +19,19 @@ const EditFixedDeposit = () => {
   const [amount, setAmount] = useState('');
   const [top100Films, setTop100Films] = useState([]);
   const { id } = useParams();
+
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
   
   useEffect(() => {
     const fetchUserNames = async () => {
       try {
-        const response = await fetch('/api/v1/users/');
+        const response = await fetch(`${backendURL}/api/v1/users/`, {
+            headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+        });
         const data = await response.json();
         if (data?.data?.data) {
           setTop100Films(data.data.data.map((user) => ({ label: user.name })));
@@ -35,7 +43,12 @@ const EditFixedDeposit = () => {
 
     const fetchDebtDetails = async () => {
       try {
-        const response = await fetch(`/api/v1/debt/${id}`);
+        const response = await fetch(`${backendURL}/api/v1/debt/${id}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+        });
         const data = await response.json();
         if (data?.data) {
           setBankDetails(data.data.data.bankDetails || '');
@@ -78,9 +91,12 @@ const EditFixedDeposit = () => {
     };
 
     try {
-      const response = await fetch(`/api/v1/debt/${id}`, {
+      const response = await fetch(`${backendURL}/api/v1/debt/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json' ,
+          Authorization: `Bearer ${token}`
+        },
         body: JSON.stringify(payload),
       });
       if (response.ok) {

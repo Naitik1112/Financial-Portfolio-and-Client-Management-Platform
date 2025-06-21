@@ -35,12 +35,13 @@ const AddClient = () => {
     };
 
     const backendURL = import.meta.env.VITE_BACKEND_URL;
-
+    const token = localStorage.getItem('jwt');
     try {
       const response = await fetch(`${backendURL}/api/v1/users/addUser`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify(clientData),
       });

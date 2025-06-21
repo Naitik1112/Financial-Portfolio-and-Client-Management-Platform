@@ -44,10 +44,18 @@ const EditPolicy = () => {
   const [deathClaim,setDeathClaim] = useState(0)
   const [deathClaimDate,setDeathClaimDate] = useState(null)
 
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
+
   useEffect(() => {
     const fetchPolicyData = async () => {
       try {
-        const response = await axios.get(`/api/v1/lifeInsurance/${id}`);
+        const response = await axios.get(`${backendURL}/api/v1/lifeInsurance/${id}`,{
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+        });
         const data = response.data.data.data;
         console.log(data)
         setClientId(data.clientId?.name || '');
@@ -117,7 +125,12 @@ const EditPolicy = () => {
   useEffect(() => {
       const fetchUserNames = async () => {
         try {
-          const response = await fetch('/api/v1/users/');
+          const response = await fetch(`${backendURL}/api/v1/users/`, {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+          })
           const data = await response.json();
            // Log to check response structure
   

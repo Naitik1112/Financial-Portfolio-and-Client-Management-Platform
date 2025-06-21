@@ -23,12 +23,19 @@ const AddFixedDeposit = () => {
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [top100Films, setTop100Films] = useState([]); // State to hold user names
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
 
   useEffect(() => {
     const fetchUserNames = async () => {
       try {
-        const backendURL = import.meta.env.VITE_BACKEND_URL;
-        const response = await fetch(`${backendURL}/api/v1/users/`);
+        
+        const response = await fetch(`${backendURL}/api/v1/users/`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         const data = await response.json();
 
         console.log('API Response:', data); // Log to check response structure
@@ -69,10 +76,11 @@ const AddFixedDeposit = () => {
     };
 
     try {
-      const response = await fetch('/api/v1/debt', {
+      const response = await fetch(`${backendURL}/api/v1/debt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
         },
         body: JSON.stringify(payload),
       });

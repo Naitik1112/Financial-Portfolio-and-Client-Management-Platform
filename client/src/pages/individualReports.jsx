@@ -31,6 +31,8 @@ const AddClient = () => {
   const [top100Films, setTop100Films] = useState([]);
   const [schemeOptions, setSchemeOptions] = useState([]);
   const [selectedScheme, setSelectedScheme] = useState(null);
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
 
   useEffect(() => {
   const fetchSchemes = async () => {
@@ -68,7 +70,12 @@ const AddClient = () => {
   useEffect(() => {
     const fetchUserNames = async () => {
       try {
-        const response = await fetch('/api/v1/users/');
+        const response = await fetch(`${backendURL}/api/v1/users/`, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+        })
         const data = await response.json();
           // Log to check response structure
 
@@ -98,19 +105,19 @@ const AddClient = () => {
     // Determine the API endpoint URL based on the selected report type
     let apiUrl;
     if (selectedReport.label === 'Life Insurance of Client') {
-      apiUrl = '/api/v1/reports/policyByClient';
+      apiUrl = `${backendURL}/api/v1/reports/policyByClient`;
     } else if (selectedReport.label === 'Mutual Funds of Client') {
-      apiUrl = '/api/v1/reports/schemeByClient';
+      apiUrl = `${backendURL}/api/v1/reports/schemeByClient`;
     } else if (selectedReport.label === 'General Insurance of Client') {
-      apiUrl = '/api/v1/reports/generalPolicyByClient';
+      apiUrl = `${backendURL}/api/v1/reports/generalPolicyByClient`;
     } else if (selectedReport.label === 'Debts of Client') {
-      apiUrl = '/api/v1/reports/debtsByClient';
+      apiUrl = `${backendURL}/api/v1/reports/debtsByClient`;
     } else if (selectedReport.label === 'CashFlow of Client'){
-      apiUrl = '/api/v1/reports/cashFlowReport'
+      apiUrl = `${backendURL}/api/v1/reports/cashFlowReport`
     } else if (selectedReport.label === 'Scheme wise - Valution Report') {
-      apiUrl = '/api/v1/reports/schemeValuation'; 
+      apiUrl = `${backendURL}/api/v1/reports/schemeValuation`; 
     } else if (selectedReport.label === 'Claims of Client'){
-      apiUrl = '/api/v1/reports/claimsByClient'
+      apiUrl = `${backendURL}/api/v1/reports/claimsByClient`
     }
     else {
       alert('Invalid report type selected!');
@@ -135,7 +142,7 @@ const AddClient = () => {
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token}`},
         body: JSON.stringify(payload),
       });
   

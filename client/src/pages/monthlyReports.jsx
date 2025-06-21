@@ -19,6 +19,8 @@ const AddClient = () => {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [downloadFormat, setDownloadFormat] = useState(null);
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -38,9 +40,9 @@ const AddClient = () => {
     };
   
     try {
-      const response = await fetch('/api/v1/reports/monthlyReport', {
+      const response = await fetch(`${backendURL}/api/v1/reports/monthlyReport`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' , Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
   

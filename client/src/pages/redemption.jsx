@@ -16,11 +16,17 @@ const AddClient = () => {
   const [navMap, setNavMap] = useState({});
   const [loading, setLoading] = useState(false);
   const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
 
   useEffect(() => {
     const fetchUserNames = async () => {
       try {
-        const response = await fetch(`${backendURL}/api/v1/users/`);
+        const response = await fetch(`${backendURL}/api/v1/users/`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         const data = await response.json();
         if (data?.data?.data) {
           const userNames = data.data.data.map((user) => ({ label: user.name, id: user._id }));
@@ -121,9 +127,9 @@ const AddClient = () => {
 
     try {
       // console.log("redemptionPayload : ",redemptionPayload)
-      const res = await fetch('/api/v1/mutualFunds/redeemUnits', {
+      const res = await fetch(`${backendURL}/api/v1/mutualFunds/redeemUnits`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' , Authorization: `Bearer ${token}`},
         body: JSON.stringify(redemptionPayload),
       });
 

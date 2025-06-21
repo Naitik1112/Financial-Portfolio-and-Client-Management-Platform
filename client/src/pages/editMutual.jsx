@@ -22,6 +22,7 @@ const EditPolicy = () => {
   const [error, setError] = useState('');
   const [amount, setAmount] = useState('');
 
+  
 
   const fetchPolicyDetails = async (code) => {
     try {

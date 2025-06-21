@@ -9,8 +9,16 @@ const formatDate = isoDate => {
 // Fetch Debt Funds and format dates
 export const fetchDebtsWithNAV = async userId => {
   try {
+    const backendURL = import.meta.env.VITE_BACKEND_URL;
+    const token = localStorage.getItem('jwt');
+
     const response = await axios.get(
-      `/api/v1/debt/user/${userId}`
+      `${backendURL}/api/v1/debt/user/${userId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+      }
     );
     if (response.data && response.data.status === 'success') {
       return response.data.data.Debts.map(debt => ({

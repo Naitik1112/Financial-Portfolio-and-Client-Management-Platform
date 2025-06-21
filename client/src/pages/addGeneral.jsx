@@ -41,6 +41,8 @@ const AddGeneral = () => {
     if (value >= 0) setPendingClaimYears(value);
   };
 
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
 
   const handleApplyChanges = () => {
     if (pendingClaimYears >= 0) {
@@ -102,7 +104,13 @@ const AddGeneral = () => {
   useEffect(() => {
       const fetchUserNames = async () => {
         try {
-          const response = await fetch('/api/v1/users/');
+          const response = await fetch(`${backendURL}/api/v1/users/`, {
+            method: "GET", 
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+          });
           const data = await response.json();
            // Log to check response structure
   
@@ -163,10 +171,11 @@ const AddGeneral = () => {
         
         console.log(formattedPolicyData)
 
-        const response = await fetch('/api/v1/generalInsurance', {
+        const response = await fetch(`${backendURL}/api/v1/generalInsurance`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
           },
           body: JSON.stringify(formattedPolicyData),
         });

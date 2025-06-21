@@ -26,10 +26,18 @@ const AddClient = () => {
   const [downloadFormat, setDownloadFormat] = useState(null);
   const [top100Films, setTop100Films] = useState([]);
 
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
+
   useEffect(() => {
     const fetchUserNames = async () => {
       try {
-        const response = await fetch('/api/v1/users/');
+        const response = await fetch(`${backendURL}/api/v1/users/` , {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+        });
         const data = await response.json();
           // Log to check response structure
 
@@ -59,13 +67,13 @@ const AddClient = () => {
     // Determine the API endpoint URL based on the selected report type
     let apiUrl;
     if (selectedReport.label === 'Life Insurance of Group') {
-      apiUrl = '/api/v1/reports/policyByGroup';
+      apiUrl = `${backendURL}/api/v1/reports/policyByGroup`;
     } else if (selectedReport.label === 'Mutual Funds of Group') {
-      apiUrl = '/api/v1/reports/schemeByGroup';
+      apiUrl = `${backendURL}/api/v1/reports/schemeByGroup`;
     } else if (selectedReport.label === 'General Insurance of Group') {
-      apiUrl = '/api/v1/reports/generalPolicyByGroup';
+      apiUrl = `${backendURL}/api/v1/reports/generalPolicyByGroup`;
     } else if (selectedReport.label === 'Debts of Group') {
-      apiUrl = '/api/v1/reports/debtsByGroup';
+      apiUrl = `${backendURL}/api/v1/reports/debtsByGroup`;
     }
     else {
       alert('Invalid report type selected!');
@@ -80,7 +88,7 @@ const AddClient = () => {
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`},
         body: JSON.stringify(payload),
       });
   
