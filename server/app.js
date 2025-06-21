@@ -33,24 +33,23 @@ app.use(
   })
 );
 
-app.use(
-  cors({
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      process.env.FRONTEND_URL,
-      'https://financial-portfolio-and-client-management-platform-1qibu6r3k.vercel.app/',
-      'https://financial-portfolio-and-client.onrender.com'
-    ], // Allow both frontend ports
-    credentials: true // Allow cookies
-  })
-);
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    process.env.FRONTEND_URL,
+    'https://financial-portfolio-and-client-management-platform-1qibu6r3k.vercel.app',
+    'https://financial-portfolio-and-client.onrender.com'
+  ],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(cookieParser());
 
 app.set('trust proxy', 1);
-
-app.options('*', cors());
 
 // 1) MIDDLEWARES
 if (process.env.NODE_ENV === 'development') {
