@@ -38,7 +38,7 @@ const App = () => {
     if (!confirmDelete) return;
 
     try {
-      const response = await fetch(`/api/v1/users/${customer._id}`, {
+      const response = await fetch(`${backendURL}/api/v1/users/${customer._id}`, {
         method: "DELETE",
         credentials: "include",
         headers: {
