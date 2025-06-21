@@ -40,6 +40,10 @@ const App = () => {
       const response = await fetch(`/api/v1/users/${customer._id}`, {
         method: "DELETE",
         credentials: "include",
+        headers: {
+           'Content-Type': 'application/json',
+           Authorization: `Bearer ${token}`
+         },
       });
 
       if (response.ok) {
