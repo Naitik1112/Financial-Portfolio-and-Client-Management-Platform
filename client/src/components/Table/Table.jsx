@@ -9,6 +9,7 @@ const App = () => {
   const [sortAsc, setSortAsc] = useState(true);
   const [customers, setCustomers] = useState([]);
   const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
 
   useEffect(() => {
     const fetchCustomers = async () => {
