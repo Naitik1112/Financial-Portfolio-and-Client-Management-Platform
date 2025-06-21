@@ -45,8 +45,8 @@ function App() {
         <Navbar/>
         <Routes>
           <Route path = "/" element={<Home/>} />
-          <Route path = "/myClient" element={<MyClient/>} />
           <Route path = "/profile/:id" element={<Profile/>} />
+          <Route path = "/myClient" element={<MyClient/>} />
           <Route path = "/signin" element={<SignIn/>} />
           <Route path = "/signup" element={<SignUp/>} />
           <Route path = "/addClient" element={<AddClient/>} />

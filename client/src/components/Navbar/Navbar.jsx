@@ -13,6 +13,8 @@ import "./Navbar.css"; // Assuming you have a CSS file for styling
 const Navbar = () => {
   const location = useLocation();
   const [jwtExists, setJwtExists] = useState(!!Cookies.get('jwt'));
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
 
   useEffect(() => {
     // Update JWT state when route changes
@@ -27,9 +29,13 @@ const Navbar = () => {
     }
   
     try {
-      const response = await fetch("api/v1/users/logout", {
+      const response = await fetch(`${backendURL}api/v1/users/logout`, {
         method: "GET",
         credentials: "include", // Ensures cookies are sent with the request
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
       });
 
       // delete axios.defaults.headers.common['Authorization'];
