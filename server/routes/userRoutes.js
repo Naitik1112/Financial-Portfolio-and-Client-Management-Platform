@@ -19,6 +19,10 @@ router.use(authController.protect);
 
 router.route('/getme').get(userController.getme, userController.getUser);
 
+router.route('/numberOfClients').get(userController.getNumberOfClient)
+
+router.route('/getRecentlyAdded').get(userController.getRecentClients)
+
 router.route('/deleteMe').patch(userController.deleteMe);
 
 router

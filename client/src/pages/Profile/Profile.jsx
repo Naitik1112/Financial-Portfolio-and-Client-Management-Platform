@@ -24,18 +24,8 @@ import { fetchDebtsWithNAV } from './../../js/GetDebtByUser.js'
 import { fetchLifeInsWithNAV } from './../../js/GetLifeInsByUser.js'
 import { fetchGeneralInsWithNAV } from './../../js/GetGeneralInsByUser.js'
 
-const inputStyles = {
-  '& .MuiInputBase-input': { color: '#A0AAB4' },
-  '& .MuiInputLabel-root': { color: '#A0AAB4' },
-  '& .MuiOutlinedInput-root': {
-    '& fieldset': { borderColor: '#A0AAB4' },
-    '&:hover fieldset': { borderColor: '#BA9D4D' },
-    '&.Mui-focused fieldset': { borderColor: '#BA9D4D' },
-  },
-  '& label.Mui-focused': {
-    color: '#A0AAB4',
-  },
-};
+import { getStyles } from "../../styles/themeStyles";
+import { useThemeMode } from "../../context/ThemeContext";
 
 // Separate TabPanel Component
 function TabPanel(props) {
@@ -48,6 +38,10 @@ function TabPanel(props) {
       id={`vertical-tabpanel-${index}`}
       aria-labelledby={`vertical-tab-${index}`}
       {...other}
+      style={{
+        height: '100%',
+        overflowY: 'auto',
+      }}
     >
       {value === index && (
         <Box sx={{ p: 3 }}>
@@ -123,8 +117,6 @@ const columns = [
   { id: 'name', label: 'Scheme Name', minWidth: 150 },
   { id: 'investmentType', label: 'Investment Type', minWidth: 120 },
   { id: 'totalInvested', label: 'Amount Invested', minWidth: 130 },
-  { id: 'status', label: 'SIP Status', minWidth: 100 }, // Show only for SIP
-  { id: 'totalUnits', label: 'Total Units', minWidth: 100 },
   { id: 'currentValue', label: 'Current Value', minWidth: 130 },
 ];
 
@@ -226,10 +218,17 @@ function GeneralInsuranceTab() {
 }
 
 // Main Tabs Component
+
 export default function VerticalTabs() {
   const [value, setValue] = React.useState(0);
-  const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const theme = useTheme(); 
+  const { darkMode } = useThemeMode();
+  const { containerStyles, containerStyles1 } = getStyles(darkMode);
+    
+  const { primaryColor, secondaryColor, tertiaryColor, body ,background1, background2, background ,background3, fourthColor} = getStyles(darkMode);
+
+  // 👉 Check if screen width is less than 1000px
+  const isSmallScreen = useMediaQuery('(max-width:1100px)');
 
   const handleChange = (event, newValue) => {
     setValue(newValue);
@@ -238,42 +237,51 @@ export default function VerticalTabs() {
   return (
     <Box
       sx={{
-        flexGrow: 3,
-        bgcolor: 'rgb(35, 35, 35)',
+        mt: '70px',
+        mx: 'auto', // ← This does horizontal centering
+        pl: 0,
+        pr: { xs: 2, md: 4 },
+        width: { 
+          xs: '300px',   // 0-599px
+          sm: '500px',   // 600-899px
+          md: '820px',   // 900-1199px
+          lg: '1100px',   // 1200-1535px
+          xl: 'max(85%, 1200px)' // 1536px+
+        },
+        // minWidth: '500px', ← Remove (conflicts with responsive widths)
+        maxWidth: '1600px', // Simplified
+        borderRadius: '16px',
+        backgroundColor: background1,
+        boxShadow: '0 0px 0px rgba(46, 44, 147, 0.4)',
+        overflow: 'hidden',
         display: 'flex',
-        height: isSmallScreen ? 350 : 550,
-        width: 'max(1250px)',
-        marginTop: "125px",
-        borderRadius: "15px"
+        flexDirection: isSmallScreen ? 'column' : 'row',
       }}
     >
+      {/* TAB LIST */}
       <Tabs
         orientation={isSmallScreen ? 'horizontal' : 'vertical'}
         variant="scrollable"
         value={value}
         onChange={handleChange}
-        aria-label={isSmallScreen ? 'horizontal tabs example' : 'Vertical tabs example'}
-        textColor='#E4B912'
         sx={{
-          width: 'max(220px,20%)',
-          borderRight: isSmallScreen ? 'none' : 5,
-          borderBottom: isSmallScreen ? 5 : 'none',
-          borderColor: 'divider',
-          backgroundColor: 'rgb(35, 35, 35)',
-          borderTopLeftRadius: "15px",
-          borderBottomLeftRadius: "15px",
+          minWidth: isSmallScreen ? '100%' : 'min(20%, 200px)',
+          backgroundColor: fourthColor,
+          borderRight: isSmallScreen ? 'none' : '1px solid #444',
+          borderBottom: isSmallScreen ? '1px solid #444' : 'none',
           '.MuiTab-root': {
-            color: '#CECCC9',
-            backgroundColor: 'rgb(35, 35, 35)',
-            marginTop: '10px',
+            color: '#aaa',
             alignItems: 'flex-start',
+            textAlign: 'left',
+            px: 3,
+            py: 2,
           },
           '.Mui-selected': {
-            color: '#c3a564',
-            backgroundColor: '#333',
+            color: primaryColor,
+            backgroundColor: background3,
           },
           '.MuiTabs-indicator': {
-            backgroundColor: '#c3a564',
+            backgroundColor: primaryColor,
           },
         }}
       >
@@ -283,21 +291,23 @@ export default function VerticalTabs() {
         <Tab label="General Insurance" {...a11yProps(3)} />
         <Tab label="Debts" {...a11yProps(4)} />
       </Tabs>
-      <TabPanel value={value} index={0}>
-        <ProfileTab />
-      </TabPanel>
-      <TabPanel value={value} index={1}>
-        <MutualFundsTab />
-      </TabPanel>
-      <TabPanel value={value} index={2}>
-        <LifeInsuranceTab />
-      </TabPanel>
-      <TabPanel value={value} index={3}>
-        <GeneralInsuranceTab />
-      </TabPanel>
-      <TabPanel value={value} index={4}>
-        <DebtTab />
-      </TabPanel>
+
+      {/* TAB CONTENT */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          height: isSmallScreen ? 'auto' : '600px', // 📌 Set fixed height for content
+          overflowY: 'auto',
+          overflowX: 'hidden',
+        }}
+      >
+        <TabPanel value={value} index={0}><ProfileTab /></TabPanel>
+        <TabPanel value={value} index={1}><MutualFundsTab /></TabPanel>
+        <TabPanel value={value} index={2}><LifeInsuranceTab /></TabPanel>
+        <TabPanel value={value} index={3}><GeneralInsuranceTab /></TabPanel>
+        <TabPanel value={value} index={4}><DebtTab /></TabPanel>
+      </Box>
     </Box>
   );
 }

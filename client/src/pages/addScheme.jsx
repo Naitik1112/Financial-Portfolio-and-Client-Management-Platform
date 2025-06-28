@@ -7,9 +7,13 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import Autocomplete from '@mui/material/Autocomplete';
-import { inputStyles, buttonStyles, containerStyles } from './../styles/themeStyles';
 import dayjs from 'dayjs';
 import axios from 'axios';
+
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
+
+
 
 const investmentTypes = [{ label: 'SIP', value: 'sip' }, { label: 'Lumpsum', value: 'lumpsum' }];
 const sipStatusOptions = [{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }];
@@ -43,6 +47,10 @@ const AddPolicy = () => {
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+
+  const { darkMode } = useThemeMode();
+  const { inputStyles, buttonStyles, containerStyles, containerStyles1 } = getStyles(darkMode);
+
 
   // Fetch users for dropdowns
   useEffect(() => {
@@ -260,10 +268,10 @@ const AddPolicy = () => {
       justifyContent: 'space-between',
       gap: 4,
       width: '100%',
-      padding: '60px',
+      padding: '0px',
       paddingTop: '0px',
       paddingBottom: '15px',
-      marginTop: '120px',
+      marginTop: '80px',
       ...containerStyles,
     }}>
       <Typography sx={{
@@ -317,26 +325,7 @@ const AddPolicy = () => {
                 },
               },
             }}
-          />
-
-
-          
-          <Autocomplete
-            options={investmentTypes}
-            getOptionLabel={(option) => option.label}
-            value={investmentTypes.find(opt => opt.value === formData.investmentType) || null}
-            onChange={(_, newValue) => handleChange('investmentType', newValue?.value || '')}
-            renderInput={(params) => <TextField {...params} label="Investment Type" />}
-            sx={inputStyles}
-            componentsProps={{
-              paper: {
-                sx: {
-                  bgcolor: 'grey',
-                  color: 'black',
-                },
-              },
-            }}
-          />
+          />          
           
           <Autocomplete
             options={users}
@@ -354,31 +343,11 @@ const AddPolicy = () => {
               },
             }}
           />
-        </Box>
 
-        {/* Right Column - Type-Specific Fields */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '45ch' }}>
-          {formData.investmentType === 'lumpsum' ? (
-            <>
-              <TextField
-                label="Amount (₹)"
-                variant="outlined"
-                type="number"
-                value={formData.lumpsumAmount}
-                onChange={(e) => handleChange('lumpsumAmount', e.target.value)}
-                sx={inputStyles}
-              />
-              
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  label="Investment Date"
-                  value={formData.lumpsumDate}
-                  onChange={(newValue) => handleChange('lumpsumDate', newValue)}
-                  sx={inputStyles}
-                />
-              </LocalizationProvider>
-            </>
-          ) : formData.investmentType === 'sip' ? (
+
+
+
+          {formData.investmentType === 'sip' ? (
             <>
               <TextField
                 label="SIP Amount (₹)"
@@ -388,7 +357,7 @@ const AddPolicy = () => {
                 onChange={(e) => handleChange('sipAmount', e.target.value)}
                 sx={inputStyles}
               />
-              
+
               <TextField
                 label="SIP Day of Month"
                 variant="outlined"
@@ -401,6 +370,84 @@ const AddPolicy = () => {
                 inputProps={{ min: 1, max: 31 }}
                 sx={inputStyles}
               />
+            </>
+          ) : formData.investmentType === 'lumpsum' ? (
+            <>
+              <TextField
+                label="Amount (₹)"
+                variant="outlined"
+                type="number"
+                value={formData.lumpsumAmount}
+                onChange={(e) => handleChange('lumpsumAmount', e.target.value)}
+                sx={inputStyles}
+              />
+            </>
+          ) : null}
+
+
+
+        </Box>
+
+            
+
+
+        {/* Right Column - Type-Specific Fields */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '45ch' }}>
+
+
+          <Autocomplete
+            options={investmentTypes}
+            getOptionLabel={(option) => option.label}
+            value={investmentTypes.find(opt => opt.value === formData.investmentType) || null}
+            onChange={(_, newValue) => handleChange('investmentType', newValue?.value || '')}
+            renderInput={(params) => <TextField {...params} label="Investment Type" />}
+            sx={inputStyles}
+            componentsProps={{
+              paper: {
+                sx: {
+                  bgcolor: 'grey',
+                  color: 'black',
+                },
+              },
+            }}
+          />
+
+
+          {[1].map((num) => (
+            <Autocomplete
+              key={num}
+              options={users}
+              getOptionLabel={(user) => user.name}
+              value={users.find(user => user._id === formData[`nominee${num}Id`]) || null}
+              onChange={(_, newValue) => handleChange(`nominee${num}Id`, newValue?._id || '')}
+              renderInput={(params) => <TextField {...params} label={`Nominee ${num}`} />}
+              sx={inputStyles}
+              componentsProps={{
+                paper: {
+                  sx: {
+                    bgcolor: 'grey',
+                    color: 'black',
+                  },
+                },
+              }}
+            />
+          ))}
+
+
+          {formData.investmentType === 'lumpsum' ? (
+            <>
+              
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Investment Date"
+                  value={formData.lumpsumDate}
+                  onChange={(newValue) => handleChange('lumpsumDate', newValue)}
+                  sx={inputStyles}
+                />
+              </LocalizationProvider>
+            </>
+          ) : formData.investmentType === 'sip' ? (
+            <>
               
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
@@ -441,25 +488,7 @@ const AddPolicy = () => {
             </>
           ) : null}
           
-          {[1].map((num) => (
-            <Autocomplete
-              key={num}
-              options={users}
-              getOptionLabel={(user) => user.name}
-              value={users.find(user => user._id === formData[`nominee${num}Id`]) || null}
-              onChange={(_, newValue) => handleChange(`nominee${num}Id`, newValue?._id || '')}
-              renderInput={(params) => <TextField {...params} label={`Nominee ${num}`} />}
-              sx={inputStyles}
-              componentsProps={{
-                paper: {
-                  sx: {
-                    bgcolor: 'grey',
-                    color: 'black',
-                  },
-                },
-              }}
-            />
-          ))}
+          
         </Box>
       </Box>
 

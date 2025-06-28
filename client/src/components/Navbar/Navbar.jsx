@@ -1,14 +1,17 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
 import Button from '@mui/material/Button';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import Cookies from 'js-cookie'; // Import js-cookie to handle JWT
+import Cookies from 'js-cookie';
 import Hamburger from './../../assets/Hamburger.png';
-import Brand from './../../assets/logo1.png';
+import Brand from './../../assets/logo2.png';
 import axios from 'axios';
-import "./Navbar.css"; // Assuming you have a CSS file for styling
+import './Navbar.css';
+import { useThemeMode } from '../../context/ThemeContext';
+import { getStyles } from "../../styles/themeStyles";
 
 const Navbar = () => {
   const location = useLocation();
@@ -16,46 +19,34 @@ const Navbar = () => {
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
 
+  // ✅ Extract BOTH darkMode and toggleTheme here
+  const { darkMode, toggleTheme } = useThemeMode();
+  const { containerStyles, containerStyles1 } = getStyles(darkMode);
+    const {
+      primaryColor,
+      secondaryColor,
+      tertiaryColor,
+      fourthColor,
+      body,
+    } = getStyles(darkMode);
+
   useEffect(() => {
-    // Update JWT state when route changes
     setJwtExists(!!localStorage.getItem('jwt'));
   }, [location.pathname]);
 
   const handleLogout = async () => {
     const confirmLogout = window.confirm("Are you sure you want to log out?");
-    
-    if (!confirmLogout) {
-      return; // Exit the function if the user cancels
-    }
-  
-    try {
-      // const response = await fetch(`${backendURL}api/v1/users/logout`, {
-      //   method: "GET",
-      //   credentials: "include", // Ensures cookies are sent with the request
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     Authorization: `Bearer ${token}`
-      //   },
-      // });
+    if (!confirmLogout) return;
 
+    try {
       delete axios.defaults.headers.common['Authorization'];
-      localStorage.removeItem('jwt');// Remove JWT from cookies
+      localStorage.removeItem('jwt');
       setJwtExists(false);
       window.location.href = "/signin";
-      
-      // if (response.ok) {
-      //   delete axios.defaults.headers.common['Authorization'];
-      //   localStorage.removeItem('jwt');// Remove JWT from cookies
-      //   setJwtExists(false);
-      //   window.location.href = "/signin"; // Redirect to sign-in page
-      // } else {
-      //   console.error("Logout failed");
-      // }
     } catch (error) {
       console.error("Error logging out:", error);
     }
   };
-  
 
   const [anchorElFinance, setAnchorElFinance] = useState(null);
   const [anchorElReports, setAnchorElReports] = useState(null);
@@ -69,16 +60,39 @@ const Navbar = () => {
   const handleCloseReports = () => setAnchorElReports(null);
 
   return (
-    <nav>
+    <nav  style={{ background: fourthColor}}>
       <input type="checkbox" id="check" />
       <label htmlFor="check" className="checkbtn">
-        <i className="fas fa-bars"></i>
         <img src={Hamburger} alt="Menu" />
       </label>
       <label className="logo">
         <img src={Brand} alt="Logo" id="Logo_img" />
       </label>
-      <ul>
+
+      {/* ✅ Theme Toggle Icon */}
+      <Button
+        onClick={toggleTheme}
+        sx={{
+          position: 'absolute',
+          right: '16px',
+          top: '50%',                  // Center vertically
+          transform: 'translateY(-50%)', // Center offset
+          color: '#fff',
+          minWidth: 'auto',
+          borderRadius: '50%',
+          p: 1,
+          backgroundColor: '#2c2c2c',
+          zIndex: 10,                  // Ensure it's above nav items
+          '&:hover': {
+            backgroundColor: '#3c3c3c',
+          },
+        }}
+
+      >
+        {darkMode ? <Brightness7 /> : <Brightness4 />}
+      </Button>
+
+      <ul className="nav-links">
         <li>
           <NavLink to="/" className={`menu ${location.pathname === '/' ? 'active' : ''}`}>
             Home
@@ -97,7 +111,7 @@ const Navbar = () => {
             aria-expanded={openFinance ? 'true' : undefined}
             onClick={handleClickFinance}
             sx={{
-              color: location.pathname.includes('/add') ? '#d2b577' : '#fff', // Highlight when active
+              color: location.pathname.includes('/add') ? '#d2b577' : '#fff',
               backgroundColor: 'transparent',
               '&:hover': { color: '#d2b577' },
             }}
@@ -126,7 +140,7 @@ const Navbar = () => {
             aria-expanded={openReports ? 'true' : undefined}
             onClick={handleClickReports}
             sx={{
-              color: location.pathname.includes('Report') ? '#d2b577' : '#fff', // Highlight when active
+              color: location.pathname.includes('Report') ? '#d2b577' : '#fff',
               backgroundColor: 'transparent',
               '&:hover': { color: '#d2b577' },
             }}
@@ -152,19 +166,28 @@ const Navbar = () => {
           </NavLink>
         </li>
         <li>
+          <NavLink to="/investmentmore" className={`tip ${location.pathname === '/investmentmore' ? 'active' : ''}`}>
+            Investment and More
+          </NavLink>
+        </li>
+        <li>
           {jwtExists ? (
-            // <button onClick={handleLogout} className="logout-btn">LOGOUT</button>
-            <NavLink 
-            onClick={handleLogout} 
-            style={{ 
-              color: 'white', 
-              textDecoration: 'none',
-              transition: 'color 0.3s ease'
-            }} 
-            onMouseEnter={(e) => (e.target.style.color = 'rgb(171, 146, 83)')}
-            onMouseLeave={(e) => (e.target.style.color = 'white')} >LOGOUT</NavLink>
+            <NavLink
+              onClick={handleLogout}
+              style={{
+                color: 'white',
+                textDecoration: 'none',
+                transition: 'color 0.3s ease',
+              }}
+              onMouseEnter={(e) => (e.target.style.color = 'rgb(171, 146, 83)')}
+              onMouseLeave={(e) => (e.target.style.color = 'white')}
+            >
+              LOGOUT
+            </NavLink>
           ) : (
-            <NavLink to="/signin" className={location.pathname === '/signin' ? 'active' : ''}>SIGN IN</NavLink>
+            <NavLink to="/signin" className={location.pathname === '/signin' ? 'active' : ''}>
+              SIGN IN
+            </NavLink>
           )}
         </li>
       </ul>

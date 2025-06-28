@@ -13,13 +13,15 @@ export const fetchDebtsWithNAV = async userId => {
     const token = localStorage.getItem('jwt');
 
     const response = await axios.get(
-      `${backendURL}/api/v1/debt/user/${userId}`, {
+      `${backendURL}/api/v1/debt/user/${userId}`,
+      {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
-        },
+        }
       }
     );
+    console.log(response);
     if (response.data && response.data.status === 'success') {
       return response.data.data.Debts.map(debt => ({
         ...debt,

@@ -7,8 +7,11 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import Autocomplete from '@mui/material/Autocomplete';
-import { inputStyles, buttonStyles, containerStyles } from "./../styles/themeStyles";
 import dayjs from 'dayjs';
+
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
+
 
 
 const type = [{label:'Monthly'},{label:'Quaterly'},{label:'Half-Yearly'},{label:'Yearly'}]
@@ -42,6 +45,10 @@ const AddPolicy = () => {
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+
+  const { darkMode } = useThemeMode();
+  const { inputStyles, buttonStyles,containerStyles, containerStyles1 } = getStyles(darkMode);
+  const { primaryColor, secondaryColor, tertiaryColor, body } = getStyles(darkMode);
 
   const handlePendingClaimYearsChange = (event) => {
     const value = Number(event.target.value);
@@ -283,7 +290,6 @@ const AddPolicy = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column',alignItems:'left',justifyContent:"center",  width: '30%' }}> 
           <Button size="large"
           sx={{ 
-            backgroundImage: 'linear-gradient(90deg,rgb(124, 97, 44),rgb(192, 169, 108))', 
             color: '#000', 
             height: "80%",
             width: "80%",
@@ -365,7 +371,7 @@ const AddPolicy = () => {
       ...buttonStyles,
     }}
     variant="contained" color="success" onClick={handleSubmit}>
-        Submit
+        SUBMIT
     </Button>
     </Box>
   );

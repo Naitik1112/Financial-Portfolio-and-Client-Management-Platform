@@ -27,6 +27,11 @@ const userSchema = new mongoose.Schema(
       default: '',
       unique: true
     },
+    groupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Group',
+      default: null
+    },
     pancard: {
       type: String,
       default: ''
@@ -59,6 +64,10 @@ const userSchema = new mongoose.Schema(
         message: 'Passwords are not the same'
       }
     },
+    createdAt: {
+      type: Date,
+      default: Date.now()
+    },
     passwordChangedAt: Date,
     passwordResetToken: String,
     passwordResetExpires: Date,
@@ -71,6 +80,9 @@ const userSchema = new mongoose.Schema(
   {
     toJSON: { virtuals: true }, // Include virtuals in JSON response
     toObject: { virtuals: true } // Include virtuals when converting to objects
+  },
+  {
+    timestamps: true // <-- this adds createdAt and updatedAt
   }
 );
 

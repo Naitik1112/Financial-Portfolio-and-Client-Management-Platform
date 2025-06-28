@@ -7,10 +7,13 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import Autocomplete from '@mui/material/Autocomplete';
-import { inputStyles, buttonStyles, containerStyles } from "./../styles/themeStyles";
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
+
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
+
 
 const typelabels = [{label:'Health Insurance'},{label:'Car Insurance'},{label:'Travel Insurance'},{label:'PA Insurance'}]
   
@@ -41,6 +44,9 @@ const AddGeneral = () => {
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+
+  const { darkMode } = useThemeMode();
+  const { inputStyles, buttonStyles,containerStyles, containerStyles1, primaryColor,secondaryColor,tertiaryColor,fourthColor } = getStyles(darkMode)
 
   useEffect(() => {
     const fetchPolicyData = async () => {
@@ -317,9 +323,9 @@ const AddGeneral = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column',alignItems:'left',justifyContent:"center",  width: '30%' }}> 
           <Button size="large"
           sx={{ 
-            backgroundImage: 'linear-gradient(90deg,rgb(124, 97, 44),rgb(192, 169, 108))', 
+            // backgroundImage: 'linear-gradient(90deg,rgb(124, 97, 44),rgb(192, 169, 108))', 
             color: '#000', 
-            height: "70%",
+            height: "90%",
             width: "80%",
             ...buttonStyles
           }} onClick={handleApplyChanges1}>
@@ -387,12 +393,12 @@ const AddGeneral = () => {
             sx={inputStyles}
         />
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column',alignItems:'left',justifyContent:"center",  width: '30%' }}> 
+        <Box sx={{ display: 'flex', flexDirection: 'row',alignItems:'center',justifyContent:"center", alignContent: "center" ,  width: '30%' }}> 
           <Button size="large"
           sx={{ 
-            backgroundImage: 'linear-gradient(90deg,rgb(124, 97, 44),rgb(192, 169, 108))', 
+            // backgroundImage: 'linear-gradient(90deg,rgb(124, 97, 44),rgb(192, 169, 108))', 
             color: '#000', 
-            height: "70%",
+            height: "90%",
             width: "80%",
             ...buttonStyles
           }} onClick={handleApplyChanges}>

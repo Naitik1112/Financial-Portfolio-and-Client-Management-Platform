@@ -6,9 +6,11 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import Typography from '@mui/material/Typography';
 import Autocomplete from '@mui/material/Autocomplete';
-import { inputStyles, buttonStyles, containerStyles } from "./../styles/themeStyles";
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
+
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
 
 const type = [
   { label: 'PDF', value: 'pdf' },
@@ -21,6 +23,10 @@ const AddClient = () => {
   const [downloadFormat, setDownloadFormat] = useState(null);
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+
+  const { darkMode } = useThemeMode();
+  const { inputStyles, buttonStyles,containerStyles, containerStyles1 } = getStyles(darkMode)
+  
 
   const handleSubmit = async (event) => {
     event.preventDefault();

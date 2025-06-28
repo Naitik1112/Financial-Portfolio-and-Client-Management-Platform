@@ -6,7 +6,11 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import Typography from '@mui/material/Typography';
-import { inputStyles, buttonStyles, containerStyles } from "./../styles/themeStyles"; 
+
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
+
+
 
 const AddClient = () => {
   const [name, setName] = useState('');
@@ -15,6 +19,23 @@ const AddClient = () => {
   const [group, setGroup] = useState('');
   const [contact, setcontact] = useState('');
   const [pancard, setpancard] = useState('');
+  
+  const { darkMode } = useThemeMode();
+  const { containerStyles, containerStyles1 , containerStyles2} = getStyles(darkMode);
+  const {
+    inputStyles,
+    buttonStyles,
+    primaryColor,
+    secondaryColor,
+    tertiaryColor,
+    fourthColor,
+    fontColor,
+    body,
+    background,
+    background1,
+    background2,
+  } = getStyles(darkMode);
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,12 +101,12 @@ const AddClient = () => {
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
-        width: '45ch',
+        width: '60ch',
         marginTop: '120px',
         padding:'40px',
         paddingTop:'25px',
         paddingBottom:'10px',
-        ...containerStyles
+        ...containerStyles1
       }}
     >
       <Typography
@@ -154,7 +175,7 @@ const AddClient = () => {
         type="submit"
         sx={buttonStyles}
       >
-        Submit
+        SUBMIT
       </Button>
     </Box>
   );

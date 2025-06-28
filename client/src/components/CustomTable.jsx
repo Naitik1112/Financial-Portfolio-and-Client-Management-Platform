@@ -12,22 +12,41 @@ import Button from '@mui/material/Button';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import IconButton from '@mui/material/IconButton';
-import DeleteIcon from './../assets/delete.png'; // Import the delete icon
+import DeleteIcon from './../assets/delete.png';
+import { useTheme } from '@mui/material/styles';
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
+import Box from '@mui/material/Box';
 
-const darkTheme = createTheme({
-  palette: {
-    mode: 'dark',
-    background: {
-      paper: '#121212',
-    },
-    text: {
-      primary: '#ffffff',
-      secondary: '#b0bec5',
-    },
-  },
-});
+function CustomTable({ data, columns, variable1, onDeleteSuccess, onDelete }) {
+  const theme = useTheme();
+  const { darkMode } = useThemeMode();
+  const { containerStyles, containerStyles1 } = getStyles(darkMode);
+  const { primaryColor, secondaryColor, tertiaryColor, body, background1, background2, background, fourthColor, fontColor, background3 } = getStyles(darkMode);
 
-function CustomTable({ data, columns, variable1, onDeleteSuccess , onDelete}) {
+  const darkTheme = createTheme({
+    palette: {
+      mode: 'dark',
+      background: {
+        paper: background,
+        default: background1,
+      },
+      text: {
+        primary: fontColor,
+        secondary: secondaryColor,
+      },
+    },
+    components: {
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            padding: '12px 16px',
+          },
+        },
+      },
+    },
+  });
+
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const navigate = useNavigate();
@@ -53,7 +72,6 @@ function CustomTable({ data, columns, variable1, onDeleteSuccess , onDelete}) {
 
     try {
       const token = localStorage.getItem('jwt');
-
       const response = await fetch(`${backendURL}/api/v1/${onDelete}/${_id}`, {
         method: "DELETE",
         headers: {
@@ -61,16 +79,9 @@ function CustomTable({ data, columns, variable1, onDeleteSuccess , onDelete}) {
         }
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to delete the record");
-      }
-
+      if (!response.ok) throw new Error("Failed to delete the record");
       alert("Record deleted successfully!");
-
-      // Call the callback function to update the table UI
-      if (onDeleteSuccess) {
-        onDeleteSuccess(_id);
-      }
+      if (onDeleteSuccess) onDeleteSuccess(_id);
     } catch (error) {
       console.error("Error deleting record:", error);
       alert("Error deleting record. Please try again.");
@@ -81,28 +92,57 @@ function CustomTable({ data, columns, variable1, onDeleteSuccess , onDelete}) {
     <ThemeProvider theme={darkTheme}>
       <Paper
         sx={{
-          width: 'max(940px)',
+          width: '100%',
+          minWidth: { xs: '200px',sm : '300px', md: '750px', lg : '800px' , xl: 'max(80%,800px)' },
+          maxWidth: { xs: '300px',sm : '500px', md: '850px', lg : '900px' , xl: 'max(80%,900px)' },
           overflow: 'hidden',
-          backgroundColor: (theme) => theme.palette.background.paper,
-          color: (theme) => theme.palette.text.primary,
+          backgroundColor: background1,
+          borderRadius: '12px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
         }}
         elevation={3}
       >
-        <TableContainer sx={{ maxHeight: 440 }}>
+        <TableContainer sx={{ 
+          maxHeight: 500,
+          '&::-webkit-scrollbar': {
+            width: '8px',
+            height: '8px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: background1,
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: tertiaryColor,
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            background: secondaryColor,
+          }
+        }}>
           <Table
             stickyHeader
             aria-label="sticky table"
             sx={{
               '& .MuiTableCell-stickyHeader': {
-                backgroundColor: '#1F1F1F',
-                color: '#ffffff',
-                fontWeight: 'bold',
+                backgroundColor: background1,
+                color: fontColor,
+                fontWeight: '600',
+                fontSize: '0.875rem',
+                borderBottom: `2px solid ${tertiaryColor}`,
               },
               '& .MuiTableCell-root': {
-                borderBottom: '1px solid #424242',
+                borderBottom: `1px solid ${background1}`,
+                fontSize: '0.875rem',
               },
               '& .MuiTableRow-root:hover': {
-                backgroundColor: '#333333',
+                backgroundColor: background1,
+                transition: 'background-color 0.2s ease',
+              },
+              '& .MuiTableRow-root:nth-of-type(even)': {
+                backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+              },
+              '& .MuiTableRow-root:nth-of-type(even):hover': {
+                backgroundColor: background1,
               },
             }}
           >
@@ -111,57 +151,93 @@ function CustomTable({ data, columns, variable1, onDeleteSuccess , onDelete}) {
                 {columns.map((column) => (
                   <TableCell
                     key={column.id}
-                    align={column.align}
-                    style={{ minWidth: column.minWidth }}
+                    align={column.align || 'left'}
+                    style={{ 
+                      minWidth: column.minWidth,
+                      whiteSpace: 'nowrap'
+                    }}
                   >
                     {column.label}
                   </TableCell>
                 ))}
-                <TableCell align="center">View</TableCell>
-                <TableCell align="center">Delete</TableCell>
+                <TableCell align="center" style={{ minWidth: 120 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {data
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((row, index) => (
-                  <TableRow hover role="checkbox" tabIndex={-1} key={index}>
+                  <TableRow 
+                    hover 
+                    role="checkbox" 
+                    tabIndex={-1} 
+                    key={index}
+                    sx={{
+                      '&:last-child td': {
+                        borderBottom: 'none'
+                      }
+                    }}
+                  >
                     {columns.map((column) => {
                       const value = row[column.id];
                       return (
-                        <TableCell key={column.id} align={column.align}>
+                        <TableCell 
+                          key={column.id} 
+                          align={column.align || 'left'}
+                          sx={{
+                            color: column.color || 'inherit',
+                            fontWeight: column.fontWeight || 'normal'
+                          }}
+                        >
                           {column.format && typeof value === 'number'
                             ? column.format(value)
                             : value}
                         </TableCell>
                       );
                     })}
-                    <TableCell align="center">
-                      <Button
-                        sx={{
-                          borderColor: 'white',
-                          color: 'white',
-                        }}
-                        size='small'
-                        variant="outlined"
-                        color="primary"
-                        onClick={() => handleViewMore(row._id)}
-                      >
-                        View
-                      </Button>
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton
-                        onClick={() => handleDelete(row._id)}
-                        aria-label="delete"
-                        size="small"
-                      >
-                        <img
-                          src={DeleteIcon}
-                          alt="Delete"
-                          style={{ width: 24, height: 24 }}
-                        />
-                      </IconButton>
+                   <TableCell align="center">
+                      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => handleViewMore(row._id)}
+                          sx={{
+                            color: fontColor,
+                            borderColor: fontColor,
+                            '&:hover': {
+                              backgroundColor: `${secondaryColor}20`,
+                              borderColor: secondaryColor,
+                            },
+                            textTransform: 'none',
+                            fontSize: '0.75rem',
+                            px: 1.5,
+                            py: 0.5,
+                          }}
+                        >
+                          View
+                        </Button>
+                        <IconButton
+                          onClick={() => handleDelete(row._id)}
+                          aria-label="delete"
+                          size="small"
+                          sx={{
+                            color: '#ff5252',
+                            '&:hover': {
+                              backgroundColor: '#ff525220',
+                            },
+                          }}
+                        >
+                          <img
+                            src={DeleteIcon}
+                            alt="Delete"
+                            style={{ 
+                              width: '18px',
+                              height: '18px', // Fixed equal dimensions work better than '100%'
+                              objectFit: 'contain' // Ensures proper image scaling
+                            }}
+                          />
+                        </IconButton>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -177,13 +253,18 @@ function CustomTable({ data, columns, variable1, onDeleteSuccess , onDelete}) {
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
           sx={{
-            backgroundColor: '#1c1c1c',
-            color: '#ffffff',
+            backgroundColor: background3,
+            color: fontColor,
+            borderTop: `1px solid ${fontColor}`,
             '& .MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
-              color: '#b0bec5',
+              color: fontColor,
+              fontSize: '0.875rem',
             },
             '& .MuiTablePagination-select': {
-              color: '#ffffff',
+              color: fontColor,
+            },
+            '& .MuiSvgIcon-root': {
+              color: fontColor,
             },
           }}
         />
@@ -195,9 +276,9 @@ function CustomTable({ data, columns, variable1, onDeleteSuccess , onDelete}) {
 CustomTable.propTypes = {
   data: PropTypes.array.isRequired,
   columns: PropTypes.array.isRequired,
-  variable1: PropTypes.string.isRequired, // `variable1` is required
+  variable1: PropTypes.string.isRequired,
   onDelete: PropTypes.string.isRequired,
-  onDeleteSuccess: PropTypes.func, // Callback function to update UI after deletion
+  onDeleteSuccess: PropTypes.func,
 };
 
 export default CustomTable;

@@ -12,51 +12,29 @@ const CatchAsync = require('./../utils/catchAsync');
 const generatePDF = require('./../utils/generatePDF');
 const generateExcel = require('./../utils/generateExcel');
 const axios = require('axios');
-
-exports.getUserId = CatchAsync(async (req, res, next) => {
-  const { name, format } = req.body; // Expect 'format' to specify pdf or excel
-
-  // Step 1: Validate input
-  if (!name) {
-    return res.status(400).json({
-      status: 'fail',
-      message: 'Client name is required'
-    });
-  }
-
-  // Step 2: Find the user by name
-  const user = await User.findOne({ name });
-  if (!user) {
-    return res.status(404).json({
-      status: 'fail',
-      message: `No user found with the name: ${name}`
-    });
-  }
-
-  req.userId = user._id; // Extract the user's ID
-  req.format = format;
-  req.name = name;
-  next();
-});
+const { calculateXirr } = require('./../utils/xirr');
 
 exports.getSchemeByGroup = CatchAsync(async (req, res) => {
-  // Find schemes for the user
-  req.groupName = req.body.groupName;
-  req.format = req.body.format;
+  const { format, groupName, userIds } = req.body;
 
-  const usersInGroup = await User.find({ group: req.groupName }).select('_id'); // Step 1 & 2
-  const userIds = usersInGroup.map(user => user._id); // Extract ID
+  // Validate input
+  if (!userIds || !Array.isArray(userIds)) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'Please provide valid user IDs'
+    });
+  }
 
-  const schemes = await Mutual.find({ holderId: { $in: userIds } }) // Step 3
-    .populate('holderId', 'name')
-    .populate('nominee1Id', 'name')
-    .populate('nominee2Id', 'name')
-    .populate('nominee3Id', 'name'); // Step 4
+  // Find schemes only for the specified users
+  const schemes = await Mutual.find({ holderId: { $in: userIds } }).populate(
+    'holderId',
+    'name'
+  );
 
   if (!schemes.length) {
     return res.status(404).json({
       status: 'fail',
-      message: `No schemes found for group with the name: ${req.groupName}`
+      message: `No schemes found for group: ${groupName}`
     });
   }
 
@@ -64,91 +42,155 @@ exports.getSchemeByGroup = CatchAsync(async (req, res) => {
     try {
       const response = await axios.get(
         `https://api.mfapi.in/mf/${AMFI}/latest`,
-          {
-            // Override headers to remove Authorization for this request
-            headers: {
-              Authorization: undefined
-            }
-          }
+        { headers: { Authorization: undefined } }
       );
       if (
         response.data?.status === 'SUCCESS' &&
         response.data?.data?.length > 0
       ) {
-        return parseFloat(response.data.data[0].nav); // Convert NAV to a number
+        return parseFloat(response.data.data[0].nav);
       }
     } catch (error) {
       console.error(`Error fetching NAV for AMFI ${AMFI}:`, error);
     }
-    return null; // Return null if NAV couldn't be fetched
+    return null;
+  };
+
+  const calculateCAGR = (initialAmount, finalAmount, startDate) => {
+    const now = new Date();
+    const years = (now - new Date(startDate)) / (1000 * 60 * 60 * 24 * 365);
+    if (initialAmount <= 0 || years <= 0) return 0;
+    return (Math.pow(finalAmount / initialAmount, 1 / years) - 1) * 100;
+  };
+
+  const calculateSIPXIRR = (transactions, currentValue) => {
+    try {
+      const cashflows = transactions.map(txn => ({
+        amount: -txn.amount,
+        when: new Date(txn.date)
+      }));
+      cashflows.push({
+        amount: currentValue,
+        when: new Date()
+      });
+      const rate = calculateXirr(cashflows);
+      return rate * 100;
+    } catch (err) {
+      console.error('XIRR Calculation Error:', err.message);
+      return 0;
+    }
   };
 
   const formattedSchemes = await Promise.all(
     schemes.map(async scheme => {
       const nav = await fetchNAV(scheme.AMFI);
-      const totalInvestment = nav ? (scheme.totalunits * nav).toFixed(2) : null;
+
+      // Calculate investment details based on type
+      let totalInvestment,
+        totalUnits,
+        startDate,
+        endDate,
+        returnRate,
+        duration,
+        currentInvestment;
+
+      if (scheme.investmentType === 'sip') {
+        // SIP calculations
+        totalInvestment = scheme.sipTransactions.reduce(
+          (sum, txn) => sum + txn.amount,
+          0
+        );
+        totalUnits =
+          scheme.sipTransactions.reduce((sum, txn) => sum + txn.units, 0) -
+          (scheme.redeemedUnits || 0);
+        startDate = scheme.sipStartDate;
+        endDate = scheme.sipEndDate || 'N/A';
+        currentInvestment = nav ? nav * totalUnits : null;
+        returnRate = calculateSIPXIRR(
+          scheme.sipTransactions,
+          currentInvestment || 0
+        );
+      } else {
+        // Lumpsum calculations
+        totalInvestment = scheme.lumpsumAmount;
+        totalUnits = scheme.lumpsumUnits - (scheme.redeemedUnits || 0);
+        startDate = scheme.lumpsumDate;
+        endDate = 'N/A';
+        currentInvestment = nav ? nav * totalUnits : null;
+        returnRate = calculateCAGR(
+          totalInvestment,
+          currentInvestment || 0,
+          startDate
+        );
+      }
+
+      // Calculate duration in years
+      if (startDate) {
+        const start = new Date(startDate);
+        const now = new Date();
+        duration = (now - start) / (1000 * 60 * 60 * 24 * 365);
+        duration = duration.toFixed(2) + ' years';
+      } else {
+        duration = 'N/A';
+      }
 
       return {
-        _id: scheme._id,
-        schemeName: scheme.schemeName,
-        fundHouse: scheme.fundHouse,
-        AMFI: scheme.AMFI,
-        holderName: scheme.holderId?.name || null,
-        nominee1Name: scheme.nominee1Id?.name || null,
-        nominee2Name: scheme.nominee2Id?.name || null,
-        nominee3Name: scheme.nominee3Id?.name || null,
-        mode: scheme.mode,
-        startDate: scheme.startDate,
-        amount: scheme.amount,
-        totalunits: scheme.totalunits,
-        TotalInvestment: totalInvestment, // Added Total Investment
-        __v: scheme.__v
+        holderName: scheme.holderId.name,
+        name: scheme.schemeName.split(' - ')[0],
+        startDate: startDate ? new Date(startDate).toLocaleDateString() : 'N/A',
+        investmenttype: scheme.investmentType,
+        endDate:
+          endDate === 'N/A' ? endDate : new Date(endDate).toLocaleDateString(),
+        totalInvestment: totalInvestment?.toFixed(2) || 'N/A',
+        // totalUnits: totalUnits?.toFixed(4) || 'N/A',
+        currentNav: nav?.toFixed(4) || 'N/A',
+        currentInvestment: currentInvestment?.toFixed(2) || 'N/A',
+        returnRate: returnRate?.toFixed(2) + '%' || 'N/A',
+        duration
       };
     })
   );
 
-  console.log(formattedSchemes);
   // Define fields for mutual fund data
   const mutualFundFields = [
-    { label: 'Scheme Name', value: 'schemeName' },
-    { label: 'Fund House', value: 'fundHouse' },
-    { label: 'AMFI', value: 'AMFI' },
-    { label: 'Mode', value: 'mode' },
+    { label: 'Holder Name', value: 'holderName' },
+    { label: 'Scheme Name', value: 'name' },
+    { label: 'Type', value: 'investmenttype' },
     { label: 'Start Date', value: 'startDate' },
-    { label: 'Amount', value: 'amount' },
-    { label: 'Total Units', value: 'totalunits' },
-    { label: 'Total Investment', value: 'TotalInvestment' },
-    { label: 'Client Name', value: 'holderName' },
-    { label: 'Nominee 1', value: 'nominee1Name' },
-    { label: 'Nominee 2', value: 'nominee2Name' },
-    { label: 'Nominee 3', value: 'nominee3Name' }
+    { label: 'End Date', value: 'endDate' },
+    { label: 'Total Investment', value: 'totalInvestment' },
+    // { label: 'Total Units', value: 'totalUnits' },
+    { label: 'Current NAV', value: 'currentNav' },
+    { label: 'Current Investment', value: 'currentInvestment' },
+    { label: 'XIRR', value: 'returnRate' },
+    { label: 'Duration', value: 'duration' }
   ];
 
-  // Generate the report based on the requested format
-  if (req.format === 'pdf') {
+  // Generate the report
+  if (format === 'pdf') {
     const pdfPath = path.join(
       __dirname,
-      `${req.groupName}_Mutual_Funds_Report.pdf`
+      `${groupName}_Mutual_Funds_Report.pdf`
     );
     generatePDF(
       formattedSchemes,
       pdfPath,
       res,
       mutualFundFields,
-      `Mutual Funds report of group ${req.groupName}`,
+      `Mutual Funds report of group ${groupName}`,
       'N/A'
     );
-  } else if (req.format === 'excel') {
+  } else if (format === 'excel') {
     const excelPath = path.join(
       __dirname,
-      `${req.groupName}_Mutual_Funds_Report.xlsx`
+      `${groupName}_Mutual_Funds_Report.xlsx`
     );
     generateExcel(
       formattedSchemes,
       excelPath,
       res,
       mutualFundFields,
-      `Mutual Funds report of group ${req.groupName}`,
+      `Mutual Funds report of group ${groupName}`,
       'N/A'
     );
   } else {
@@ -161,11 +203,15 @@ exports.getSchemeByGroup = CatchAsync(async (req, res) => {
 
 exports.getPolicyByGroup = CatchAsync(async (req, res) => {
   // Step 3: Find policies using the user ID and populate client and nominees
-  req.groupName = req.body.groupName;
-  req.format = req.body.format;
+  const { format, groupName, userIds } = req.body; // Get userIds directly from request
 
-  const usersInGroup = await User.find({ group: req.groupName }).select('_id'); // Step 1 & 2
-  const userIds = usersInGroup.map(user => user._id); // Extract IDs
+  // Validate input
+  if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'Please provide valid user IDs'
+    });
+  }
 
   const policies = await Life.find({ clientId: { $in: userIds } }) // Step 3
     .populate('clientId', 'name')
@@ -176,11 +222,9 @@ exports.getPolicyByGroup = CatchAsync(async (req, res) => {
   if (!policies.length) {
     return res.status(404).json({
       status: 'fail',
-      message: `No policies found for user with the name: ${req.groupName}`
+      message: `No policies found for user with the name: ${groupName}`
     });
   }
-
-  console.log(policies);
   const formattedPolicies = policies.map(policies => ({
     _id: policies._id,
     policyNumber: policies.policyNumber,
@@ -196,7 +240,7 @@ exports.getPolicyByGroup = CatchAsync(async (req, res) => {
     premium: policies.premium,
     __v: policies.__v
   }));
-
+  console.log(formattedPolicies);
   const lifeInsuranceFields = [
     { label: 'Policy Number', value: 'policyNumber' },
     { label: 'Policy Name', value: 'policyName' },
@@ -210,34 +254,27 @@ exports.getPolicyByGroup = CatchAsync(async (req, res) => {
     { label: 'Nominee 2', value: 'nominee2Name' },
     { label: 'Nominee 3', value: 'nominee3Name' }
   ];
-  console.log(formattedPolicies);
   // Step 4: Generate PDF or Excel
-  if (req.format === 'pdf') {
+  if (format === 'pdf') {
     // Create and send a PDF file
-    const pdfPath = path.join(
-      __dirname,
-      `${req.groupName}_life_Ins_report.pdf`
-    );
+    const pdfPath = path.join(__dirname, `${groupName}_life_Ins_report.pdf`);
     generatePDF(
       formattedPolicies,
       pdfPath,
       res,
       lifeInsuranceFields,
-      `Life Insurance report of group ${req.groupName}`,
+      `Life Insurance report of group ${groupName}`,
       'N/A'
     );
-  } else if (req.format === 'excel') {
+  } else if (format === 'excel') {
     // Create and send an Excel file
-    const excelPath = path.join(
-      __dirname,
-      `${req.groupName}_life_Ins_report.xlsx`
-    );
+    const excelPath = path.join(__dirname, `${groupName}_life_Ins_report.xlsx`);
     generateExcel(
       formattedPolicies,
       excelPath,
       res,
       lifeInsuranceFields,
-      `Life Insurance report of group ${req.groupName}`,
+      `Life Insurance report of group ${groupName}`,
       'N/A'
     );
   } else {
@@ -250,11 +287,15 @@ exports.getPolicyByGroup = CatchAsync(async (req, res) => {
 
 exports.getGeneralPolicyByGroup = CatchAsync(async (req, res) => {
   // Step 3: Find policies using the user ID and populate client and nominees
-  req.groupName = req.body.groupName;
-  req.format = req.body.format;
+  const { format, groupName, userIds } = req.body; // Get userIds directly from request
 
-  const usersInGroup = await User.find({ group: req.groupName }).select('_id'); // Step 1 & 2
-  const userIds = usersInGroup.map(user => user._id); // Extract IDs
+  // Validate input
+  if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'Please provide valid user IDs'
+    });
+  }
 
   const policies = await General.find({ clientId: { $in: userIds } }) // Step 3
     .populate('clientId', 'name')
@@ -265,11 +306,10 @@ exports.getGeneralPolicyByGroup = CatchAsync(async (req, res) => {
   if (!policies.length) {
     return res.status(404).json({
       status: 'fail',
-      message: `No policies found for user with the name: ${req.groupName}`
+      message: `No policies found for user with the name: ${groupName}`
     });
   }
 
-  console.log(policies);
   const formattedPolicies = policies.map(policies => ({
     _id: policies._id,
     policyNumber: policies.policyNumber,
@@ -295,34 +335,30 @@ exports.getGeneralPolicyByGroup = CatchAsync(async (req, res) => {
     { label: 'Nominee 2', value: 'nominee2Name' },
     { label: 'Nominee 3', value: 'nominee3Name' }
   ];
-  console.log(formattedPolicies);
   // Step 4: Generate PDF or Excel
-  if (req.format === 'pdf') {
+  if (format === 'pdf') {
     // Create and send a PDF file
-    const pdfPath = path.join(
-      __dirname,
-      `${req.groupName}_General_Ins_report.pdf`
-    );
+    const pdfPath = path.join(__dirname, `${groupName}_General_Ins_report.pdf`);
     generatePDF(
       formattedPolicies,
       pdfPath,
       res,
       lifeInsuranceFields,
-      `General Insurance report of group ${req.groupName}`,
+      `General Insurance report of group ${groupName}`,
       'N/A'
     );
-  } else if (req.format === 'excel') {
+  } else if (format === 'excel') {
     // Create and send an Excel file
     const excelPath = path.join(
       __dirname,
-      `${req.groupName}_General_Ins_report.xlsx`
+      `${groupName}_General_Ins_report.xlsx`
     );
     generateExcel(
       formattedPolicies,
       excelPath,
       res,
       lifeInsuranceFields,
-      `General Insurance report of group ${req.groupName}`,
+      `General Insurance report of group ${groupName}`,
       'N/A'
     );
   } else {
@@ -335,11 +371,15 @@ exports.getGeneralPolicyByGroup = CatchAsync(async (req, res) => {
 
 exports.getDebtsByGroup = CatchAsync(async (req, res) => {
   // Step 3: Find policies using the user ID and populate client and nominees
-  req.groupName = req.body.groupName;
-  req.format = req.body.format;
+  const { format, groupName, userIds } = req.body; // Get userIds directly from request
 
-  const usersInGroup = await User.find({ group: req.groupName }).select('_id'); // Step 1 & 2
-  const userIds = usersInGroup.map(user => user._id); // Extract IDs
+  // Validate input
+  if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'Please provide valid user IDs'
+    });
+  }
 
   const policies = await Debt.find({ holderId: { $in: userIds } }) // Step 3
     .populate('holderId', 'name')
@@ -347,16 +387,13 @@ exports.getDebtsByGroup = CatchAsync(async (req, res) => {
     .populate('nominee2Id', 'name')
     .populate('nominee3Id', 'name'); // Step 4
 
-  console.log(policies);
-  console.log(req.groupName);
   if (!policies.length) {
     return res.status(404).json({
       status: 'fail',
-      message: `No policies found for user with the name: ${req.groupName}`
+      message: `No policies found for user with the name: ${groupName}`
     });
   }
 
-  console.log(policies);
   const formattedPolicies = policies.map(policies => {
     const startDate = new Date(policies.startDate);
     const maturityDate = new Date(policies.MaturityDate);
@@ -396,34 +433,31 @@ exports.getDebtsByGroup = CatchAsync(async (req, res) => {
     { label: 'Nominee 2', value: 'nominee2Name' },
     { label: 'Nominee 3', value: 'nominee3Name' }
   ];
-  console.log(formattedPolicies);
+
   // Step 4: Generate PDF or Excel
-  if (req.format === 'pdf') {
+  if (format === 'pdf') {
     // Create and send a PDF file
-    const pdfPath = path.join(
-      __dirname,
-      `${req.groupName}_General_Ins_report.pdf`
-    );
+    const pdfPath = path.join(__dirname, `${groupName}_General_Ins_report.pdf`);
     generatePDF(
       formattedPolicies,
       pdfPath,
       res,
       lifeInsuranceFields,
-      `Debt report of group ${req.groupName}`,
+      `Debt report of group ${groupName}`,
       'N/A'
     );
-  } else if (req.format === 'excel') {
+  } else if (format === 'excel') {
     // Create and send an Excel file
     const excelPath = path.join(
       __dirname,
-      `${req.groupName}_General_Ins_report.xlsx`
+      `${groupName}_General_Ins_report.xlsx`
     );
     generateExcel(
       formattedPolicies,
       excelPath,
       res,
       lifeInsuranceFields,
-      `Debt report of group ${req.groupName}`,
+      `Debt report of group ${groupName}`,
       'N/A'
     );
   } else {

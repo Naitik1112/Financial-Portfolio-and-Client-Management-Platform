@@ -146,6 +146,7 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
         { _id: mfId },
         {
           $inc: { redeemedUnits: unitsToRedeem },
+          $set: { lastRedemptionDate: now }, 
           $push: {
             redemptions: {
               date: new Date(),
@@ -200,6 +201,11 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
           }
         });
 
+        await MF.updateOne(
+          { _id: mfId },
+          { $set: { lastRedemptionDate: new Date() } }
+        );
+        
         unitsToRedeem -= redeemNow;
       }
 
@@ -297,7 +303,6 @@ exports.getSchemesCaching = async (req, res) => {
       amfiCode,
       schemeName
     }));
-    console.log(result);
     res
       .status(200)
       .json({ status: 'success', length: result.length, data: result });

@@ -7,8 +7,10 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import Autocomplete from '@mui/material/Autocomplete';
-import { inputStyles, buttonStyles, containerStyles } from "./../styles/themeStyles";
 import dayjs from 'dayjs';
+
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
   
 const AddFixedDeposit = () => {
   const [BankDetails, setBankDetails] = useState('');
@@ -25,6 +27,9 @@ const AddFixedDeposit = () => {
   const [top100Films, setTop100Films] = useState([]); // State to hold user names
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+
+  const { darkMode } = useThemeMode();
+  const { inputStyles, buttonStyles, containerStyles, containerStyles1 } = getStyles(darkMode);
 
   useEffect(() => {
     const fetchUserNames = async () => {
@@ -121,7 +126,6 @@ const AddFixedDeposit = () => {
         padding: '40px',
         paddingTop: '0px',
         paddingBottom: '15px',
-        marginTop: '120px',
         ...containerStyles
       }}
     >

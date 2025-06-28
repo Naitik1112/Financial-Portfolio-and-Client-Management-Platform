@@ -4,7 +4,8 @@ import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { inputStyles, buttonStyles, containerStyles } from "./../styles/themeStyles";
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
 
 const EditFixedDeposit = () => {
   const [BankDetails, setBankDetails] = useState('');
@@ -22,6 +23,9 @@ const EditFixedDeposit = () => {
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+
+  const { darkMode } = useThemeMode();
+  const { inputStyles, buttonStyles,containerStyles, containerStyles1 } = getStyles(darkMode);
   
   useEffect(() => {
     const fetchUserNames = async () => {

@@ -13,7 +13,7 @@
 }*/
 
 body {
-    min-height: 100vh;
+    /* min-height: 100vh; */
     background: url(images/html_table.jpg) center / cover;
     display: flex;
     /* justify-content: center; */
@@ -30,7 +30,7 @@ main.table {
     margin: 15vh 3vw;
     margin-top: 100px;
     margin-bottom: 0px;
-    border: 2px solid rgb(65, 65, 65);
+    /* border: 2px solid rgb(65, 65, 65); */
     overflow: hidden;
     padding-top: 0.5rem;
 }
@@ -131,7 +131,7 @@ thead th {
     position: sticky;
     top: 0;
     left: 0;
-    background-color: #1a1919fe;
+    background-color: #161619fe;
     cursor: pointer;
     text-transform: capitalize;
 }
@@ -151,7 +151,7 @@ tbody tr.hide {
 }
 
 tbody tr:hover {
-    background-color: rgba(146, 146, 146, 0.133) !important;
+    background-color: rgba(55, 58, 69, 0.992) !important;
 }
 
 tbody tr td,
@@ -198,7 +198,7 @@ tbody tr.hide td img {
 }
 
 
-@media (max-width: 1000px) {
+@media (max-width: 900px) {
     td:not(:first-of-type) {
         min-width: 12.1rem;
     }

@@ -10,7 +10,9 @@ import Autocomplete from '@mui/material/Autocomplete';
 import dayjs from 'dayjs';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { inputStyles, buttonStyles, containerStyles } from "./../styles/themeStyles"; 
+
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
 
 const type = [{label:'Monthly'},{label:'Quaterly'},{label:'Half-Yearly'},{label:'Yearly'}]
   
@@ -46,6 +48,9 @@ const EditPolicy = () => {
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+
+  const { darkMode } = useThemeMode();
+  const {  inputStyles, buttonStyles,containerStyles, containerStyles1 } = getStyles(darkMode)
 
   useEffect(() => {
     const fetchPolicyData = async () => {

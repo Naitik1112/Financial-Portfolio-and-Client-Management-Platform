@@ -60,7 +60,7 @@ export const fetchMutualFundsWithNAV = async userId => {
         const currentValue = effectiveUnits * currNAV;
 
         return {
-          name: fund.schemeName,
+          name: fund.schemeName?.split(' - ')[0] || fund.schemeName,
           investmentType: fund.investmentType,
           status: fund.investmentType === 'sip' ? fund.sipStatus : 'N/A',
           totalInvested: totalInvested.toFixed(2),

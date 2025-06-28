@@ -1,12 +1,21 @@
-import React, { useState,useEffect } from 'react';
-import TextField from '@mui/material/TextField';
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import { LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import Typography from '@mui/material/Typography';
-import Autocomplete from '@mui/material/Autocomplete';
-import { inputStyles, buttonStyles, containerStyles } from "./../styles/themeStyles";
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Autocomplete,
+  Checkbox,
+  FormControlLabel,
+  List,
+  ListItem,
+  Paper,
+  CircularProgress
+} from '@mui/material';
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
+import { fetchAllGroup } from "../js/GetAllGroups";
+import { fetchUsersOfGroup } from "../js/GetUsersOfGroup";
 
 const reportType = [
   { label: 'Life Insurance of Group' }, 
@@ -21,46 +30,67 @@ const type = [
 ];
 
 const AddClient = () => {
-  const [holderName, setHolderName] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [downloadFormat, setDownloadFormat] = useState(null);
-  const [top100Films, setTop100Films] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [groupUsers, setGroupUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
 
-  useEffect(() => {
-    const fetchUserNames = async () => {
-      try {
-        const response = await fetch(`${backendURL}/api/v1/users/` , {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-        });
-        const data = await response.json();
-          // Log to check response structure
+  const { darkMode } = useThemeMode();
+  const { inputStyles, buttonStyles, containerStyles1, background,background2,background3, background1,fontColor,paperBg } = getStyles(darkMode);
 
-        // Access nested array and map the user names
-        if (data?.data?.data) {
-            const userNames = [...new Set(data.data.data.map((user) => user.group))].map((group) => ({ label: group }));
-            setTop100Films(userNames);
-        } else {
-          throw new Error('Unexpected response structure');
-        }
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const data = await fetchAllGroup();
+        setGroups(data.map(group => ({ label: group.name, value: group._id })));
       } catch (error) {
-        console.error('Error fetching user names:', error);
+        console.error('Error fetching groups:', error);
       }
     };
-  
-    fetchUserNames();
+    fetchGroups();
   }, []);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (selectedGroup?.value) {
+        setLoading(true);
+        try {
+          const users = await fetchUsersOfGroup(selectedGroup.value);
+          setGroupUsers(users);
+          // Initially select all users
+          setSelectedUsers(users.map(user => user._id));
+        } catch (error) {
+          console.error('Error fetching group users:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    fetchUsers();
+  }, [selectedGroup]);
+
+  const handleUserSelection = (userId, isChecked) => {
+    setSelectedUsers(prev => 
+      isChecked 
+        ? [...prev, userId] 
+        : prev.filter(id => id !== userId))
+  };
+
+  const handleSelectAll = (isChecked) => {
+    setSelectedUsers(isChecked ? groupUsers.map(user => user._id) : []);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
   
-    if (!holderName || !selectedReport || !downloadFormat) {
-      alert('Please fill all fields!');
+    if (!selectedGroup || !selectedReport || !downloadFormat || selectedUsers.length === 0) {
+      alert('Please fill all fields and select at least one user!');
       return;
     }
   
@@ -74,33 +104,36 @@ const AddClient = () => {
       apiUrl = `${backendURL}/api/v1/reports/generalPolicyByGroup`;
     } else if (selectedReport.label === 'Debts of Group') {
       apiUrl = `${backendURL}/api/v1/reports/debtsByGroup`;
-    }
-    else {
+    } else {
       alert('Invalid report type selected!');
       return;
     }
-    console.log("GroupName", holderName.label)
+
     const payload = {
-      groupName: holderName.label,
+      groupName: selectedGroup.label,
+      userIds: selectedUsers,
       format: downloadFormat.value,
     };
-    console.log(payload)
+
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`},
+        headers: { 
+          'Content-Type': 'application/json', 
+          Authorization: `Bearer ${token}`
+        },
         body: JSON.stringify(payload),
       });
-  
+      console.log(response)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
   
       const blob = await response.blob();
       const fileExtension = downloadFormat.value === 'pdf' ? 'pdf' : 'xlsx';
-      const fileName = `${holderName.label}_Group_Report.${fileExtension}`;
-      const fileUrl = window.URL.createObjectURL(blob); // Changed variable name to fileUrl
-  
+      const fileName = `${selectedGroup.label}_Group_Report.${fileExtension}`;
+      const fileUrl = window.URL.createObjectURL(blob);
+      
       const a = document.createElement('a');
       a.href = fileUrl;
       a.download = fileName;
@@ -111,6 +144,10 @@ const AddClient = () => {
       console.error('Error:', error.message);
       alert(`Failed to download report: ${error.message}`);
     }
+    setSelectedGroup(null);
+    setSelectedReport(null);
+    setDownloadFormat(null);
+    setSelectedUsers([]);
   };
 
   return (
@@ -125,75 +162,91 @@ const AddClient = () => {
         bgcolor: '#1E1E1E',
         padding: '50px',
         borderRadius: '30px',
-        ...containerStyles
+        ...containerStyles1,
+        maxHeight: '500px', // Set your desired max height
+        overflow: 'auto'
       }}
     >
       <Typography
         sx={{
           fontSize: '2rem',
           fontWeight: 'bold',
-          color: '#fff',
           textAlign: 'center',
-          marginBottom: '10px',
+          mb: 2,
         }}
       >
         Group Reports
       </Typography>
 
-      
       <Autocomplete
         sx={inputStyles}
-        disablePortal
         options={reportType}
         onChange={(event, value) => setSelectedReport(value)}
         renderInput={(params) => <TextField {...params} label="Report Type" />}
-        componentsProps={{
-          paper: {
-            sx: {
-              bgcolor: "grey", // Background color of the dropdown menu
-              color: "black",  // Text color (optional)
-            },
-          },
-        }}
       />
 
       <Autocomplete
         sx={inputStyles}
-        disablePortal
-        options={top100Films}
-        onChange={(event, value) => setHolderName(value)}
+        options={groups}
+        onChange={(event, value) => setSelectedGroup(value)}
         renderInput={(params) => <TextField {...params} label="Group Name" />}
-        componentsProps={{
-          paper: {
-            sx: {
-              bgcolor: "grey", // Background color of the dropdown menu
-              color: "black",  // Text color (optional)
-            },
-          },
-        }}
       />
-
 
       <Autocomplete
         sx={inputStyles}
-        disablePortal
         options={type}
         onChange={(event, value) => setDownloadFormat(value)}
         renderInput={(params) => <TextField {...params} label="Download Format" />}
-        componentsProps={{
-          paper: {
-            sx: {
-              bgcolor: "grey", // Background color of the dropdown menu
-              color: "black",  // Text color (optional)
-            },
-          },
-        }}
       />
 
-      <Button size="medium" variant="contained" 
+      {selectedGroup && (
+        <Paper sx={{ p: 2, height: '100%', backgroundColor: background3, color:fontColor }}>
+          {loading ? (
+            <Box display="flex" justifyContent="center">
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={selectedUsers.length === groupUsers.length}
+                    indeterminate={
+                      selectedUsers.length > 0 && 
+                      selectedUsers.length < groupUsers.length
+                    }
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                  />
+                }
+                label="Select All"
+              />
+              <List>
+                {groupUsers.map((user) => (
+                  <ListItem key={user._id} dense>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={selectedUsers.includes(user._id)}
+                          onChange={(e) => handleUserSelection(user._id, e.target.checked)}
+                        />
+                      }
+                      label={`${user.name} (${user.email})`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </>
+          )}
+        </Paper>
+      )}
+
+      <Button 
+        size="medium" 
+        variant="contained" 
         sx={buttonStyles}
-        type="submit">
-        Submit
+        type="submit"
+      >
+        Generate Report
       </Button>
     </Box>
   );

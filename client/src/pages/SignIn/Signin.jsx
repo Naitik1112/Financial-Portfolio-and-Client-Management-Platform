@@ -12,30 +12,16 @@ import { Stack } from "@mui/material";
 import TextField from "@mui/material/TextField"; // Import MUI TextField
 import axios from "axios";
 
-const inputStyles = {
-  '& .MuiInputBase-input': { color: '#A0AAB4' },
-  '& .MuiInputLabel-root': { color: '#A0AAB4' },
-  '& .MuiOutlinedInput-root': {
-    '& fieldset': { borderColor: '#A0AAB4' },
-    '&:hover fieldset': { borderColor: '#BA9D4D' },
-    '&.Mui-focused fieldset': { borderColor: '#BA9D4D' },
-  },
-  '& label.Mui-focused': {
-    color: '#A0AAB4',
-  },
-};
-
-const buttonStyles = {
-  backgroundImage: 'linear-gradient(90deg, rgb(64, 50, 22), rgb(93, 83, 57),rgb(98, 88, 67))',
-  color: 'rgb(0, 0, 0)', // Text color
-  '&:hover': { backgroundImage: 'linear-gradient(90deg, rgb(84, 67, 31), rgb(99, 88, 58),rgb(143, 132, 108))'}
-}
+import { getStyles } from "../../styles/themeStyles";
+import { useThemeMode } from "../../context/ThemeContext";
 
 const LoginPage = () => {
   const [email, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
   const [alertOpen, setAlertOpen] = useState(false);
+  const { darkMode } = useThemeMode();
+  const { body, fontColor, paperBg, inputStyles, buttonStyles, containerStyles, containerStyles1, containerStyles2 } = getStyles(darkMode);
 
   const navigate = useNavigate(); // Initialize useNavigate
 
@@ -76,7 +62,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="container">
+    <div className="container" style={containerStyles1}>
       {/* Alert Box */}
       <Box sx={{ width: "100%" }}>
         <Collapse in={alertOpen}>

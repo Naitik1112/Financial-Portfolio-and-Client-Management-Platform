@@ -1,33 +1,98 @@
-// src/styles/themeStyles.js
+export const getStyles = (darkMode = true) => {
+  const primaryText = darkMode ? '#f5f5f5' : '#222';
+  const background = darkMode ? '#1b1b1b' : '#f2f2f2';
+  const background1 = darkMode ? '#1A1E24' : '#f2f2f2';
+  const background2 = darkMode ? '#080E17' : '#f2f2f2';
+  const background3 = darkMode ? '#232629' : '#f2f2f2';
+  const paperBg = darkMode ? '#2c2c2c' : '#fff';
+  const border = darkMode ? '#303030' : '#ccc';
+  const primaryColor = '#1976D2';
+  const secondaryColor = '#64B5F6';
+  const tertiaryColor = '#01579B';
+  const fourthColor = '#15151A';
+  const fontColor = darkMode ? '#fff' : '#111';
+  const body = darkMode ? '#111' : '#fff';
 
-export const inputStyles = {
-  '& .MuiInputBase-input': { color: '#A0AAB4' },
-  '& .MuiInputLabel-root': { color: '#A0AAB4' },
-  '& .MuiOutlinedInput-root': {
-    '& fieldset': { borderColor: '#A0AAB4' },
-    '&:hover fieldset': { borderColor: '#BA9D4D' },
-    '&.Mui-focused fieldset': { borderColor: '#BA9D4D' }
-  },
-  '& label.Mui-focused': {
-    color: '#A0AAB4'
-  },
-  '& .MuiPaper-root': {
-    bgcolor: 'grey.500' // Use MUI grey shades or a custom hex color
-  }
-};
+  return {
+    // Expose these directly so they can be destructured when using getStyles
+    primaryColor,
+    secondaryColor,
+    tertiaryColor,
+    fourthColor,
+    fontColor,
+    body,
+    background,
+    background1,
+    background2,
+    background3,
 
-export const buttonStyles = {
-  backgroundImage:
-    'linear-gradient(90deg, rgb(64, 50, 22), rgb(93, 83, 57),rgb(98, 88, 67))',
-  color: 'rgb(0, 0, 0)', // Text color
-  '&:hover': {
-    backgroundImage:
-      'linear-gradient(90deg, rgb(84, 67, 31), rgb(99, 88, 58),rgb(143, 132, 108))'
-  } // Slightly darker gradient on hover
-};
+    inputStyles: {
+      '& .MuiInputBase-input': {
+        color: darkMode ? '#d3d3d3' : '#333'
+      },
+      '& .MuiInputLabel-root': {
+        color: darkMode ? '#a0aab4' : '#555'
+      },
+      '& .MuiOutlinedInput-root': {
+        '& fieldset': {
+          borderColor: darkMode ? '#3a3a3a' : '#aaa'
+        },
+        '&:hover fieldset': {
+          borderColor: '#1976D2'
+        },
+        '&.Mui-focused fieldset': {
+          borderColor: '#1976D2'
+        }
+      },
+      '& label.Mui-focused': {
+        color: '#1976D2'
+      },
+      '& .MuiPaper-root': {
+        bgcolor: paperBg
+      }
+    },
 
-export const containerStyles = {
-  borderRadius: '20px',
-  border: '1px solid rgb(71, 71, 71)',
-  background: 'linear-gradient(180deg,rgb(32, 32, 32),rgb(31, 31, 31), #303030)'
+    buttonStyles: {
+      backgroundColor: '#1976D2',
+      color: '#ffffff',
+      fontWeight: 600,
+      borderRadius: '8px',
+      padding: '6px 16px',
+      textTransform: 'none',
+      // marginTop: '10px',
+      '&:hover': {
+        backgroundColor: '#1565C0'
+      }
+    },
+
+    containerStyles: {
+      backgroundColor: background,
+      color: primaryText,
+      padding: '24px',
+      borderRadius: '14px',
+      boxShadow: '0 0 4px rgba(2, 94, 254, 0.85)',
+      border: `1px solid ${border}`,
+      transition: 'all 0.3s ease-in-out'
+    },
+
+    containerStyles1: {
+      backgroundColor: background1,
+      color: primaryText,
+      // padding: '24px',
+      borderRadius: '14px',
+      boxShadow: '0 0 6px rgba(98, 150, 240, 0.73)',
+      border: `1px solid ${border}`,
+      transition: 'all 0.3s ease-in-out'
+    },
+
+    containerStyles2: {
+      backgroundColor: background2,
+      color: primaryText,
+      // padding: '24px',
+      borderRadius: '14px',
+      boxShadow: '0 0 4px rgba(2, 94, 254, 0.85)',
+      border: `1px solid ${border}`,
+      transition: 'all 0.3s ease-in-out'
+    }
+  };
 };

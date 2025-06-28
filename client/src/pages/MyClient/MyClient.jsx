@@ -11,7 +11,6 @@ function MyClient() {
   return (
     <>
       <div className='MyClient' >
-        <Navbar/>
         <Table/>
         {/* <Heading>Chakra Component</Heading> */}
       </div>

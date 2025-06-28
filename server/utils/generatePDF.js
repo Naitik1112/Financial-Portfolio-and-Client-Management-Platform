@@ -5,6 +5,7 @@ const PDFDocument = require('pdfkit');
 const generatePDF = async (data, filePath, res, fields, title, space) => {
   try {
     // console.log(data);
+    console.log('generate PDF');
     // console.log(fields);
     // console.log(space);
     const doc = new PDFDocument({

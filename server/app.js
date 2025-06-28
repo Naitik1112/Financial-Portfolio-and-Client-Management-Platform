@@ -17,6 +17,8 @@ const generalInsuranceRouter = require('./routes/generalInsuranceRoutes');
 const mutualFundsRouter = require('./routes/mutualFundsRoutes');
 const reportRouter = require('./routes/reportRoutes');
 const debtRouter = require('./routes/debtRoutes');
+const dashboardRouter = require('./routes/dashboardRoutes');
+const groupRouter = require('./routes/groupRoutes');
 const globalErrorHandler = require('./controllers/errorController');
 
 const app = express();
@@ -103,6 +105,8 @@ app.use('/api/v1/generalInsurance', generalInsuranceRouter);
 app.use('/api/v1/mutualFunds', mutualFundsRouter);
 app.use('/api/v1/reports', reportRouter);
 app.use('/api/v1/debt', debtRouter);
+app.use('/api/v1/dashboard', dashboardRouter);
+app.use('/api/v1/group', groupRouter);
 // app.use('/', viewRouter);
 // app.use('/api/v1/tours', tourRouter);
 // app.use('/api/v1/reviews', reviewRouter);

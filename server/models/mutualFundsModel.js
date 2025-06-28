@@ -13,121 +13,130 @@ const redemptionSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const mfSchema = new mongoose.Schema({
-  schemeName: {
-    type: String,
-    required: [true, 'A mutual fund must have a name'],
-    trim: true
-  },
-  fundHouse: {
-    type: String,
-    required: [true, 'A mutual fund must have a fund house']
-  },
-  AMFI: {
-    type: Number,
-    required: [true, 'A mutual fund must have an AMFI number']
-  },
-  holderId: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'User',
-    required: [true, 'A mutual fund must have a client ID']
-  },
-  nominee1Id: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'User',
-    required: [false]
-  },
-  nominee2Id: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'User',
-    required: [false]
-  },
-  nominee3Id: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'User',
-    required: [false]
-  },
-  investmentType: {
-    type: String,
-    enum: ['lumpsum', 'sip'],
-    required: [true, 'Specify whether investment is lumpsum or SIP']
-  },
-  // Fields specific to lumpsum investments
-  lumpsumAmount: {
-    type: Number,
-    required: function() {
-      return this.investmentType === 'lumpsum';
-    }
-  },
-  lumpsumDate: {
-    type: Date,
-    required: function() {
-      return this.investmentType === 'lumpsum';
-    }
-  },
-  lumpsumUnits: {
-    type: Number
-  },
-  // Fields specific to SIP investments
-  sipAmount: {
-    type: Number,
-    required: function() {
-      return this.investmentType === 'sip';
-    }
-  },
-  sipStartDate: {
-    type: Date,
-    required: function() {
-      return this.investmentType === 'sip';
-    }
-  },
-  sipEndDate: {
-    type: Date
-  },
-  sipDay: {
-    type: Number,
-    min: 1,
-    max: 31,
-    required: function() {
-      return this.investmentType === 'sip';
-    }
-  },
-  sipStatus: {
-    type: String,
-    enum: ['active', 'inactive'],
-    default: 'active'
-  },
+const mfSchema = new mongoose.Schema(
+  {
+    schemeName: {
+      type: String,
+      required: [true, 'A mutual fund must have a name'],
+      trim: true
+    },
+    fundHouse: {
+      type: String,
+      required: [true, 'A mutual fund must have a fund house']
+    },
+    AMFI: {
+      type: Number,
+      required: [true, 'A mutual fund must have an AMFI number']
+    },
+    holderId: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User',
+      required: [true, 'A mutual fund must have a client ID']
+    },
+    nominee1Id: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User',
+      required: [false]
+    },
+    nominee2Id: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User',
+      required: [false]
+    },
+    nominee3Id: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User',
+      required: [false]
+    },
+    investmentType: {
+      type: String,
+      enum: ['lumpsum', 'sip'],
+      required: [true, 'Specify whether investment is lumpsum or SIP']
+    },
+    // Fields specific to lumpsum investments
+    lumpsumAmount: {
+      type: Number,
+      required: function() {
+        return this.investmentType === 'lumpsum';
+      }
+    },
+    lumpsumDate: {
+      type: Date,
+      required: function() {
+        return this.investmentType === 'lumpsum';
+      }
+    },
+    lumpsumUnits: {
+      type: Number
+    },
+    // Fields specific to SIP investments
+    sipAmount: {
+      type: Number,
+      required: function() {
+        return this.investmentType === 'sip';
+      }
+    },
+    sipStartDate: {
+      type: Date,
+      required: function() {
+        return this.investmentType === 'sip';
+      }
+    },
+    sipEndDate: {
+      type: Date
+    },
+    sipDay: {
+      type: Number,
+      min: 1,
+      max: 31,
+      required: function() {
+        return this.investmentType === 'sip';
+      }
+    },
+    sipStatus: {
+      type: String,
+      enum: ['active', 'inactive'],
+      default: 'active'
+    },
 
-  redeemedUnits: {
-    type: Number,
-    default: 0
-  },
+    redeemedUnits: {
+      type: Number,
+      default: 0
+    },
 
-  redemptions: [redemptionSchema],
+    redemptions: [redemptionSchema],
 
-  // Add to each SIP transaction
-  sipTransactions: [
-    {
-      date: Date,
-      amount: Number,
-      nav: Number,
-      units: Number,
-      redeemedUnits: {
-        type: Number,
-        default: 0
-      },
-      redemptions: [redemptionSchema]
+    lastRedemptionDate: {
+      type: Date
+    },
+
+    // Add to each SIP transaction
+    sipTransactions: [
+      {
+        date: Date,
+        amount: Number,
+        nav: Number,
+        units: Number,
+        redeemedUnits: {
+          type: Number,
+          default: 0
+        },
+        redemptions: [redemptionSchema]
+      }
+    ],
+    // Common fields
+    currentValue: {
+      type: Number
+    },
+    lastUpdated: {
+      type: Date,
+      default: Date.now
     }
-  ],
-  // Common fields
-  currentValue: {
-    type: Number
   },
-  lastUpdated: {
-    type: Date,
-    default: Date.now
+  {
+    timestamps: true // <-- this adds createdAt and updatedAt
   }
-});
+);
 
 // Helper function to find closest NAV date
 async function fetchNAV(AMFI, targetDate) {
@@ -309,15 +318,58 @@ async function calculateCurrentValue(next) {
   }
 }
 
+mfSchema.pre('save', function(next) {
+  let dates = [];
+
+  if (Array.isArray(this.redemptions)) {
+    dates = dates.concat(this.redemptions.map(r => r.date));
+  }
+
+  if (Array.isArray(this.sipTransactions)) {
+    for (const txn of this.sipTransactions) {
+      if (Array.isArray(txn.redemptions)) {
+        dates = dates.concat(txn.redemptions.map(r => r.date));
+      }
+    }
+  }
+
+  this.lastRedemptionDate = dates.length
+    ? new Date(Math.max(...dates.map(d => new Date(d))))
+    : undefined;
+
+  next();
+});
+
 // Enhanced update middleware
 // Enhanced update middleware
 async function handleUpdates(next) {
   try {
-    console.log(this._skipHooks);
-    if (this._skipHooks) return next();
-    console.log('In model');
     const update = this.getUpdate();
     const doc = await this.model.findOne(this.getQuery());
+    console.log('Model update runned');
+    let dates = [];
+
+    if (Array.isArray(this.redemptions)) {
+      dates = dates.concat(this.redemptions.map(r => r.date));
+    }
+
+    if (Array.isArray(this.sipTransactions)) {
+      for (const txn of this.sipTransactions) {
+        if (Array.isArray(txn.redemptions)) {
+          dates = dates.concat(txn.redemptions.map(r => r.date));
+        }
+      }
+    }
+
+    this.lastRedemptionDate = dates.length
+      ? new Date(Math.max(...dates.map(d => new Date(d))))
+      : undefined;
+
+    update.$set.lastRedemptionDate = latestRedemptionDate;
+    // update.$set.currentValue = 100;
+    console.log(this._skipHooks);
+    if (this._skipHooks) return next();
+    // console.log('In model');
 
     // Check if we should compute new transactions
     const shouldComputeTransactions =
@@ -384,8 +436,8 @@ async function handleUpdates(next) {
         // Move to next month
         currentDate.setMonth(currentDate.getMonth() + 1);
       }
-      console.log('new transaction');
-      console.log(transactions);
+      // console.log('new transaction');
+      // console.log(transactions);
       // Force update transactions
       update.$set = update.$set || {};
       update.sipTransactions = transactions;
@@ -419,13 +471,13 @@ async function handleUpdates(next) {
 
           const currentNAV = await getCurrentNAV(AMFI);
           const currentValue = parseFloat((units * currentNAV).toFixed(2));
-          console.log('new units : ', units);
-          console.log(currentValue);
+          // console.log('new units : ', units);
+          // console.log(currentValue);
           update.$set = update.$set || {};
           update.lumpsumUnits = units;
           update.lastUpdated = new Date();
           update.$set.currentValue = currentValue;
-          console.log('newest : ', update.lumpsumUnits);
+          // console.log('newest : ', update.lumpsumUnits);
         } catch (err) {
           console.warn(`Failed to update lumpsum details: ${err.message}`);
         }
@@ -443,6 +495,7 @@ async function handleUpdates(next) {
 mfSchema.pre('save', calculateLumpsumUnits);
 mfSchema.pre('save', processSIPTransactions);
 mfSchema.pre('save', calculateCurrentValue);
+mfSchema.index({ lastRedemptionDate: -1 });
 mfSchema.pre('findOneAndUpdate', handleUpdates);
 
 const MutualFund = mongoose.model('MutualFund', mfSchema);

@@ -4,18 +4,8 @@ import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 
-const inputStyles = {
-  '& .MuiInputBase-input': { color: '#A0AAB4' },
-  '& .MuiInputLabel-root': { color: '#A0AAB4' },
-  '& .MuiOutlinedInput-root': {
-    '& fieldset': { borderColor: '#A0AAB4' },
-    '&:hover fieldset': { borderColor: '#BA9D4D' },
-    '&.Mui-focused fieldset': { borderColor: '#BA9D4D' },
-  },
-  '& label.Mui-focused': {
-    color: '#A0AAB4',
-  },
-};
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
 
 const UserDetails = ({ id }) => {
   const [userData, setUserData] = useState({
@@ -29,6 +19,12 @@ const UserDetails = ({ id }) => {
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+
+  
+  const { darkMode } = useThemeMode();
+  const { containerStyles, containerStyles1 } = getStyles(darkMode);
+  
+  const { primaryColor, secondaryColor, tertiaryColor, body, inputStyles } = getStyles(darkMode);
   
   // Fetch user data when the component loads
   useEffect(() => {
@@ -42,13 +38,13 @@ const UserDetails = ({ id }) => {
           }
         });
         const data = await response.json();
-        const user = data.data.data;
+        const user = data.data;
 
         setUserData({
           name: user.name || "",
           email: user.email || "",
           DOB: user.DOB ? dayjs(user.DOB) : null,
-          group: user.group || "",
+          group: user.groupId.name || "",
           pancard: user.pancard || "",
           contact: user.contact || "",
         });
@@ -88,7 +84,13 @@ const UserDetails = ({ id }) => {
   return (
     <Box
       sx={{
-        width: "70ch",
+        width: { 
+          xs: '200px',   // 0-599px
+          sm: '400px',   // 600-899px
+          md: '770px',   // 900-1199px
+          lg: '1000px',   // 1200-1535px
+          xl: 'max(65%, 830px)' // 1536px+
+        },
         borderColor: "#fff",
         marginLeft: "50px",
         display: "flex",
@@ -127,6 +129,7 @@ const UserDetails = ({ id }) => {
           value={userData.email}
           onChange={(e) => handleChange("email", e.target.value)}
           sx={inputStyles}
+          InputProps={{ readOnly: true }}
         />
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker
@@ -155,6 +158,7 @@ const UserDetails = ({ id }) => {
           value={userData.group}
           onChange={(e) => handleChange("group", e.target.value)}
           sx={inputStyles}
+          InputProps={{ readOnly: true }}
         />
         <TextField
           label="Pancard"
@@ -178,9 +182,9 @@ const UserDetails = ({ id }) => {
     <Stack spacing={2} direction="row">
         <Button size="large" variant="contained"
           sx={{ 
-            backgroundImage: 'linear-gradient(90deg,rgb(124, 97, 44),rgb(186, 162, 96))', 
+            backgroundImage: secondaryColor, 
             color: '#000', // Text color
-            '&:hover': { backgroundImage: 'linear-gradient(90deg, rgb(93, 72, 30), rgb(153, 135, 88))' } // Slightly darker gradient on hover
+            '&:hover': { backgroundImage: tertiaryColor } // Slightly darker gradient on hover
           }}
           onClick={handleSave}>
           Save Changes

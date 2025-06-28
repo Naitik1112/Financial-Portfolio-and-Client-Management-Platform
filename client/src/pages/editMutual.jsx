@@ -8,6 +8,9 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import Autocomplete from '@mui/material/Autocomplete';
 
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
+
 const top100Films = [
     { label: 'The Shawshank Redemption', year: 1994 },
     { label: 'The Godfather', year: 1972 },
@@ -22,7 +25,8 @@ const EditPolicy = () => {
   const [error, setError] = useState('');
   const [amount, setAmount] = useState('');
 
-  
+  const { darkMode } = useThemeMode();
+  const { inputStyles, buttonStyles,containerStyles, containerStyles1 } = getStyles(darkMode)
 
   const fetchPolicyDetails = async (code) => {
     try {

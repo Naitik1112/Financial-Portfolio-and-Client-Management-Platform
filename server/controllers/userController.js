@@ -96,7 +96,15 @@ exports.deleteMe = CatchAsync(async (req, res, next) => {
   });
 });
 
-exports.getAllUsers = factory.getAll(User);
+exports.getAllUsers = CatchAsync(async (req, res, next) => {
+  const users = await User.find().populate('groupId', 'name');
+
+  res.status(200).json({
+    status: 'success',
+    results: users.length,
+    data: users
+  });
+});
 
 exports.updateMyPassword = CatchAsync(async (req, res, next) => {
   // 1) Create error if user POSTs password data
@@ -126,13 +134,62 @@ exports.updateMyPassword = CatchAsync(async (req, res, next) => {
     }
   });
 });
-exports.getUser = factory.getOne(User);
+
+exports.getUser = CatchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const user = await User.findById(id).populate('groupId', 'name');
+
+  if (!user) return next(new AppError('User not found', 404));
+
+  res.status(200).json({
+    status: 'success',
+    data: user
+  });
+});
+
 exports.createUser = (req, res) => {
   res.status(500).json({
     status: 'error',
     message: 'This route is not defined! Please use signup instead'
   });
 };
+
+exports.getNumberOfClient = CatchAsync(async (req, res, next) => {
+  const numberOfClients = await User.countDocuments();
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      numberOfClients
+    }
+  });
+});
+
+exports.getRecentClients = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10; // default to 10
+
+    const recentClients = await User.find({ role: { $in: ['user', 'admin'] } })
+      .sort({ createdAt: -1 }) // newest first
+      .limit(limit)
+      .select('name email createdAt'); // You can add more fields as needed
+
+    res.status(200).json({
+      status: 'success',
+      results: recentClients.length,
+      data: {
+        recentClients
+      }
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'error',
+      message: err.message
+    });
+  }
+};
+
 exports.updateUser = factory.updateOne(User);
 exports.deleteUser = factory.deleteOne(User);
 

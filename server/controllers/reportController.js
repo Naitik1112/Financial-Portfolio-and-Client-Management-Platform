@@ -303,7 +303,7 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
         return {
           _id: scheme._id,
           investmentType: scheme.investmentType,
-          schemeName: scheme.schemeName,
+          schemeName: scheme.schemeName.split(' - ')[0],
           fundHouse: scheme.fundHouse,
           AMFI: scheme.AMFI,
           holderName: scheme.holderId?.name || 'N/A',
@@ -350,7 +350,7 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
 
     const mutualFundFields = [
       { label: 'Scheme Name', value: 'schemeName' },
-      { label: 'Fund House', value: 'fundHouse' },
+      // { label: 'Fund House', value: 'fundHouse' },
       { label: 'Investment Type', value: 'investmentType' },
       { label: 'Status', value: 'status' },
       { label: 'AMFI Code', value: 'AMFI' },
@@ -364,7 +364,7 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
         value: 'growthPercentage',
         format: 'percentage'
       },
-      { label: 'CAGR / XIRR', value: 'cagr', format: 'percentage' },
+      { label: 'XIRR', value: 'cagr', format: 'percentage' },
       { label: 'Total Units', value: 'totalUnits' }
     ];
 

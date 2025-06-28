@@ -4,8 +4,10 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import { Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
-import { inputStyles, buttonStyles, containerStyles } from "./../styles/themeStyles";
 import { fetchMutualFundsWithNAV } from './../js/GetMFByUser';
+
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
 
 const AddClient = () => {
   const [holderName, setHolderName] = useState(null);
@@ -17,6 +19,9 @@ const AddClient = () => {
   const [loading, setLoading] = useState(false);
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+
+  const { darkMode } = useThemeMode();
+  const { inputStyles, buttonStyles,containerStyles, containerStyles1 } = getStyles(darkMode)
 
   useEffect(() => {
     const fetchUserNames = async () => {

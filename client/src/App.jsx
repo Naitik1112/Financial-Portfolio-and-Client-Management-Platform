@@ -19,6 +19,7 @@ import EditInsurance from './pages/editInsurance'
 import UpdateScheme from './pages/updateScheme'
 import IndividualReports from './pages/individualReports'
 import GroupReports from './pages/groupReports'
+import GroupManagement from './pages/groupManagement'
 import CalenderReports from './pages/monthlyReports'
 import AddFixedDeposit from './pages/addDebt'
 import EditFixedDeposit from './pages/editDebt'
@@ -27,10 +28,19 @@ import Calender from './pages/calender'
 import AddGeneral from './pages/addGeneral'
 import EditGeneral from './pages/editGeneral'
 import Redemption from './pages/redemption'
+import InvestmentMore from './pages/InvestmentMore'
+import Sidebar from "./components/Sidebar"
+import Reports from "./pages/reports"
+
+import { useThemeMode } from './context/ThemeContext';
+import { getStyles } from './styles/themeStyles';
 
 // import './App.css'
 
 function App() {
+  const { theme } = useThemeMode();
+  const themeStyles = getStyles(theme);
+  
   useEffect(() => {
     const token = localStorage.getItem('jwt');
     if (token) {
@@ -39,10 +49,17 @@ function App() {
       delete axios.defaults.headers.common['Authorization'];
     }
   }, []);
+
+  useEffect(() => {
+    // Dynamically update body background color
+    document.body.style.backgroundColor = themeStyles.body.backgroundColor;
+  }, [theme]);
+
   return (
     <>
       <div className='App' >
         <Navbar/>
+        <Sidebar/>
         <Routes>
           <Route path = "/" element={<Home/>} />
           <Route path = "/profile/:id" element={<Profile/>} />
@@ -65,6 +82,9 @@ function App() {
           <Route path = "/addGeneral" element={<AddGeneral/>} />
           <Route path = "/GeneralUpdate/:id" element={<EditGeneral/>} />
           <Route path = '/redemption' element={<Redemption/>} />
+          <Route path = '/investmentmore' element={<InvestmentMore/>} />
+          <Route path = '/groupManagement' element={<GroupManagement/>} />
+          <Route path = '/reports' element={<Reports/>} />
         </Routes>
       </div>
     </>

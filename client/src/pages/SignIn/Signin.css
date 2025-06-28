@@ -12,13 +12,13 @@
     min-height: 100vh;
     /* background: url(./../../../public/background.jpg) no-repeat; */
     background-size: cover;
-    background: linear-gradient(5deg, #000000,#1f1f1f, #3A3A3A);
+    background-color: #111;
   }
   
   .container {
     width: 420px;
     border: 2px solid rgb(71, 71, 71);
-    background: linear-gradient(180deg, #1b1b1b, #212121, #303030);
+    /* background: linear-gradient(180deg, #1b1b1b, #212121, #303030); */
     border-radius: 20px;
     padding: 30px 40px;
     margin-top: 50px;

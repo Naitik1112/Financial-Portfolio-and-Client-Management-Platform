@@ -7,7 +7,9 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { fetchMutualFundsWithNAV } from './../js/GetMFByUser'
 import Typography from '@mui/material/Typography';
 import Autocomplete from '@mui/material/Autocomplete';
-import { inputStyles, buttonStyles, containerStyles } from "./../styles/themeStyles";
+
+import { getStyles } from "../styles/themeStyles";
+import { useThemeMode } from "../context/ThemeContext";
 
 const reportType = [
   { label: 'Life Insurance of Client' },
@@ -33,6 +35,9 @@ const AddClient = () => {
   const [selectedScheme, setSelectedScheme] = useState(null);
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+
+  const { darkMode } = useThemeMode();
+  const { inputStyles, buttonStyles,containerStyles, containerStyles1 } = getStyles(darkMode)
 
   useEffect(() => {
   const fetchSchemes = async () => {
@@ -78,10 +83,10 @@ const AddClient = () => {
         })
         const data = await response.json();
           // Log to check response structure
-
+        console.log(data)
         // Access nested array and map the user names
-        if (data?.data?.data) {
-          const userNames = data.data.data.map((user) => ({ label: user.name ,id: user._id, }));
+        if (data?.data) {
+          const userNames = data.data.map((user) => ({ label: user.name ,id: user._id, }));
           setTop100Films(userNames);
         } else {
           throw new Error('Unexpected response structure');
