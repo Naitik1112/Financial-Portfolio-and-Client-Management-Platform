@@ -5,7 +5,9 @@ import Tab from '@mui/material/Tab';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { useTheme } from '@mui/material/styles';
+import { 
+  useTheme ,
+  Paper} from '@mui/material';
 import TextField from '@mui/material/TextField';
 // import { DemoContainer } from '@mui/x-date-pickers/internals/demo';
 // import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -225,7 +227,7 @@ export default function VerticalTabs() {
   const { darkMode } = useThemeMode();
   const { containerStyles, containerStyles1 } = getStyles(darkMode);
     
-  const { primaryColor, secondaryColor, tertiaryColor, body ,background1, background2, background ,background3, fourthColor} = getStyles(darkMode);
+  const { fontColor , primaryColor, secondaryColor, tertiaryColor, body ,background1, background2, background ,background3, fourthColor} = getStyles(darkMode);
 
   // 👉 Check if screen width is less than 1000px
   const isSmallScreen = useMediaQuery('(max-width:1100px)');
@@ -235,79 +237,84 @@ export default function VerticalTabs() {
   };
 
   return (
-    <Box
-      sx={{
-        mt: '70px',
-        mx: 'auto', // ← This does horizontal centering
-        pl: 0,
-        pr: { xs: 2, md: 4 },
-        width: { 
-          xs: '300px',   // 0-599px
-          sm: '500px',   // 600-899px
-          md: '820px',   // 900-1199px
-          lg: '1100px',   // 1200-1535px
-          xl: 'max(85%, 1200px)' // 1536px+
-        },
-        // minWidth: '500px', ← Remove (conflicts with responsive widths)
-        maxWidth: '1600px', // Simplified
-        borderRadius: '16px',
-        backgroundColor: background1,
-        boxShadow: '0 0px 0px rgba(46, 44, 147, 0.4)',
+    <Box sx={{
+      display: 'flex',
+      flexDirection: isSmallScreen ? 'column' : 'row',
+      height: '600px',
+      maxHeight: 'max(80%,600px)',
+      backgroundColor: background1,
+      color: fontColor,
+      p: isSmallScreen ? 1 : 3,
+      mt: "70px",
+      mx: 'auto',
+      width: { 
+        xs: '300px',   // 0-599px
+        sm: '500px',   // 600-899px
+        md: '820px',   // 900-1199px
+        lg: '1100px',   // 1200-1535px
+        xl: 'max(85%, 1200px)' // 1536px+
+      },
+      maxWidth: '1600px',
+      borderRadius: '20px'
+    }}>
+      {/* Tabs Section */}
+      <Paper sx={{
+        mr: isSmallScreen ? 0 : 2,
+        mb: isSmallScreen ? 2 : 0,
+        width: isSmallScreen ? '100%' : '250px',
+        flexShrink: 0,
         overflow: 'hidden',
-        display: 'flex',
-        flexDirection: isSmallScreen ? 'column' : 'row',
-      }}
-    >
-      {/* TAB LIST */}
-      <Tabs
-        orientation={isSmallScreen ? 'horizontal' : 'vertical'}
-        variant="scrollable"
-        value={value}
-        onChange={handleChange}
-        sx={{
-          minWidth: isSmallScreen ? '100%' : 'min(20%, 200px)',
-          backgroundColor: fourthColor,
-          borderRight: isSmallScreen ? 'none' : '1px solid #444',
-          borderBottom: isSmallScreen ? '1px solid #444' : 'none',
-          '.MuiTab-root': {
-            color: '#aaa',
-            alignItems: 'flex-start',
-            textAlign: 'left',
-            px: 3,
-            py: 2,
-          },
-          '.Mui-selected': {
-            color: primaryColor,
-            backgroundColor: background3,
-          },
-          '.MuiTabs-indicator': {
-            backgroundColor: primaryColor,
-          },
-        }}
-      >
-        <Tab label="Profile" {...a11yProps(0)} />
-        <Tab label="Mutual Funds" {...a11yProps(1)} />
-        <Tab label="Life Insurance" {...a11yProps(2)} />
-        <Tab label="General Insurance" {...a11yProps(3)} />
-        <Tab label="Debts" {...a11yProps(4)} />
-      </Tabs>
+        backgroundColor: fourthColor,
+        borderRadius: '14px',
+        p: 1,
+      }}>
+        <Tabs
+          orientation={isSmallScreen ? 'horizontal' : 'vertical'}
+          variant="scrollable"
+          value={value}
+          onChange={handleChange}
+          sx={{
+            '& .MuiTabs-indicator': {
+              left: isSmallScreen ? 0 : 'auto'
+            },
+            '.MuiTab-root': {
+              color: '#aaa',
+              alignItems: 'flex-start',
+              textAlign: 'left',
+              px: 3,
+              py: 2,
+            },
+            '.Mui-selected': {
+              color: primaryColor,
+              backgroundColor: background3,
+            },
+            '.MuiTabs-indicator': {
+              backgroundColor: primaryColor,
+            },
+          }}
+        >
+          <Tab label="Profile" {...a11yProps(0)} sx={{ borderRadius: '5px' }} />
+          <Tab label="Mutual Funds" {...a11yProps(1)} sx={{ borderRadius: '5px' }} />
+          <Tab label="Life Insurance" {...a11yProps(2)} sx={{ borderRadius: '5px' }} />
+          <Tab label="General Insurance" {...a11yProps(3)} sx={{ borderRadius: '5px' }} />
+          <Tab label="Debts" {...a11yProps(4)} sx={{ borderRadius: '5px' }} />
+        </Tabs>
+      </Paper>
 
-      {/* TAB CONTENT */}
-      <Box
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          height: isSmallScreen ? 'auto' : '600px', // 📌 Set fixed height for content
-          overflowY: 'auto',
-          overflowX: 'hidden',
-        }}
-      >
+      {/* Content Section */}
+      <Paper sx={{
+        flexGrow: 1,
+        overflow: 'auto',
+        backgroundColor: background1,
+        borderRadius: '14px',
+        p: 1,
+      }}>
         <TabPanel value={value} index={0}><ProfileTab /></TabPanel>
         <TabPanel value={value} index={1}><MutualFundsTab /></TabPanel>
         <TabPanel value={value} index={2}><LifeInsuranceTab /></TabPanel>
         <TabPanel value={value} index={3}><GeneralInsuranceTab /></TabPanel>
         <TabPanel value={value} index={4}><DebtTab /></TabPanel>
-      </Box>
+      </Paper>
     </Box>
-  );
-}
+  )
+}    

@@ -99,24 +99,26 @@ function CustomTable({ data, columns, variable1, onDeleteSuccess, onDelete }) {
           backgroundColor: background1,
           borderRadius: '12px',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+          height: '480px',
+          maxHeight: 'max(70%,500px)',
         }}
-        elevation={3}
+        elevation={2}
       >
         <TableContainer sx={{ 
-          maxHeight: 500,
+          height: '100%',
           '&::-webkit-scrollbar': {
             width: '8px',
             height: '8px',
           },
           '&::-webkit-scrollbar-track': {
-            background: background1,
+            background: '#BDBDBD',
           },
           '&::-webkit-scrollbar-thumb': {
-            background: tertiaryColor,
+            background: '#757575',
             borderRadius: '4px',
           },
           '&::-webkit-scrollbar-thumb:hover': {
-            background: secondaryColor,
+            background: '#BDBDBD',
           }
         }}>
           <Table

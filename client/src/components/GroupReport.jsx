@@ -29,7 +29,7 @@ const type = [
   { label: 'XLSX', value: 'excel' },
 ];
 
-const AddClient = () => {
+const GroupReport = () => {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [downloadFormat, setDownloadFormat] = useState(null);
@@ -42,7 +42,7 @@ const AddClient = () => {
   const token = localStorage.getItem('jwt');
 
   const { darkMode } = useThemeMode();
-  const { inputStyles, buttonStyles, containerStyles1, background,background2,background3, background1,fontColor,paperBg } = getStyles(darkMode);
+  const { inputStyles, buttonStyles, containerStyles1, containerStyles3, background,background2,background3, background1,fontColor,paperBg } = getStyles(darkMode);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -162,14 +162,15 @@ const AddClient = () => {
         bgcolor: '#1E1E1E',
         padding: '50px',
         borderRadius: '30px',
-        ...containerStyles1,
-        maxHeight: '500px', // Set your desired max height
+        ...containerStyles3,
+        height: {xs: '400px', sm: '400px',md: '480px', },
+        maxHeight: {xs: '400px',sm: '400px',md: '480px',},
         overflow: 'auto'
       }}
     >
       <Typography
         sx={{
-          fontSize: '2rem',
+          fontSize: '1.5rem',
           fontWeight: 'bold',
           textAlign: 'center',
           mb: 2,
@@ -252,4 +253,4 @@ const AddClient = () => {
   );
 };
 
-export default AddClient;
+export default GroupReport;

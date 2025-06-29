@@ -17,7 +17,7 @@ const type = [
   { label: 'XLSX', value: 'excel' },
 ];
 
-const AddClient = () => {
+const RenewalReport = () => {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [downloadFormat, setDownloadFormat] = useState(null);
@@ -25,7 +25,7 @@ const AddClient = () => {
   const token = localStorage.getItem('jwt');
 
   const { darkMode } = useThemeMode();
-  const { inputStyles, buttonStyles,containerStyles, containerStyles1 } = getStyles(darkMode)
+  const { inputStyles, buttonStyles,containerStyles, containerStyles1 , containerStyles3, fourthColor} = getStyles(darkMode)
   
 
   const handleSubmit = async (event) => {
@@ -84,12 +84,14 @@ const AddClient = () => {
         width: '53ch',
         bgcolor: '#1E1E1E',
         padding: '50px',
-        ...containerStyles
+        height: {xs: '400px', sm: '400px',md: '480px', },
+        maxHeight: {xs: '400px',sm: '400px',md: '480px',},
+        ...containerStyles3,
       }}
     >
       <Typography
         sx={{
-          fontSize: '2rem',
+          fontSize: '1.5rem',
           fontWeight: 'bold',
           color: '#fff',
           textAlign: 'center',
@@ -144,4 +146,4 @@ const AddClient = () => {
   );
 };
 
-export default AddClient;
+export default RenewalReport;

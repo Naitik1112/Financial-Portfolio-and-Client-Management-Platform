@@ -32,16 +32,16 @@ import {  Assessment, InsertChart, Timeline } from '@mui/icons-material';
 const menuItems = [
   { text: 'Dashboard', icon: <Home />, path: '/' },
   { text: 'Clients', icon: <People />, path: '/myClient' },
-  { text: 'Individual Report', icon: <Assessment />, path: '/individualReport' },     // 📊 Assessment = suitable for individual report
-  { text: 'Group Reports', icon: <InsertChart />, path: '/groupReport' },             // 📈 InsertChart = good for grouped data
-  { text: 'Revewal Report', icon: <Timeline />, path: '/monthlyCalender' },           // 🕒 Timeline = good for time-based report
+  { text: 'Reports', icon: <Assessment/>, path: '/reports' },
+  // { text: 'Individual Report', icon: <Assessment />, path: '/individualReport' },     // 📊 Assessment = suitable for individual report
+  // { text: 'Group Reports', icon: <InsertChart />, path: '/groupReport' },             // 📈 InsertChart = good for grouped data
+  // { text: 'Revewal Report', icon: <Timeline />, path: '/monthlyCalender' },           // 🕒 Timeline = good for time-based report
   { text: 'Add Client', icon: <AddCircle />, path: '/addClient' },
   { text: 'Add Insurance', icon: <BusinessCenter />, path: '/addInsurance' },
   { text: 'Add General', icon: <AddBox />, path: '/addGeneral' },         // 🕒 Timeline = good for time-based report
   { text: 'Add Mutual Fund', icon: <AddCircle />, path: '/addPolicy' },
   { text: 'Investment & More', icon: <Dashboard />, path: '/investmentmore' },
   { text: 'Group Management', icon: <Group/>, path: '/groupManagement' },
-  { text: 'Reports', icon: <Assessment/>, path: '/reports' },
 ];
 
 

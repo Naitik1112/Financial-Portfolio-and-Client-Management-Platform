@@ -11,6 +11,9 @@ import {
 
 import { getStyles } from '../styles/themeStyles';
 import { useThemeMode } from '../context/ThemeContext';
+import GroupReport from './../components/GroupReport'
+import IndividualReport from './../components/IndividualReport'
+import RenewalReport from './../components/RenewalReport'
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -52,7 +55,10 @@ const ResponsiveTabsPage = () => {
     background1,
     background2,
     background3,
-    secondaryColor
+    secondaryColor,
+    fourthColor,
+    primaryColor,
+    tertiaryColor,
   } = getStyles(darkMode);
 
   const theme = useTheme();
@@ -64,30 +70,35 @@ const ResponsiveTabsPage = () => {
   };
 
   const tabContents = [
-    "Content for Tab 1",
-    "Content for Tab 2",
-    "Content for Tab 3",
-    "Content for Tab 4"
+    <IndividualReport/>,
+    <GroupReport/>,
+    <RenewalReport/>
   ];
 
   return (
     <Box sx={{
       display: 'flex',
       flexDirection: isMobile ? 'column' : 'row',
-      minHeight: '600px',
-      backgroundColor: background,
+      height: '600px',
+      maxHeight: 'max(80%,600px)',
+      backgroundColor: background1,
       color: fontColor,
       p: isMobile ? 1 : 3,
-      mt: "90px"
+      mt: "90px",
+      borderRadius: '20px'
     }}>
       {/* Tabs Section */}
       <Paper sx={{
-        ...(isMobile ? {} : containerStyles1),
+        // ...(isMobile ? {} : containerStyles1),
         mr: isMobile ? 0 : 2,
         mb: isMobile ? 2 : 0,
         width: isMobile ? '100%' : '250px',
         flexShrink: 0,
-        overflow: 'hidden'
+        overflow: 'hidden',
+        backgroundColor: fourthColor,
+        borderRadius: '14px',
+        p: 1,
+        // border: `4px solid ${background1}`,
       }}>
         <Tabs
           orientation={isMobile ? 'horizontal' : 'vertical'}
@@ -97,19 +108,32 @@ const ResponsiveTabsPage = () => {
           aria-label="Responsive tabs"
           sx={{
             '& .MuiTabs-indicator': {
-              backgroundColor: secondaryColor,
               left: isMobile ? 0 : 'auto'
-            }
+            },
+            '.MuiTab-root': {
+              color: '#aaa',
+              alignItems: 'flex-start',
+              textAlign: 'left',
+              px: 3,
+              py: 2,
+            },
+            '.Mui-selected': {
+              color: primaryColor,
+              backgroundColor: background3,
+            },
+            '.MuiTabs-indicator': {
+              backgroundColor: primaryColor,
+            },
           }}
         >
-          {['Tab 1', 'Tab 2', 'Tab 3', 'Tab 4'].map((label, index) => (
+          {['Individual Report', 'Group Report', 'Renewal Report'].map((label, index) => (
             <Tab
               key={index}
               label={label}
               {...a11yProps(index)}
               sx={{
                 color: fontColor,
-                '&.Mui-selected': { color: secondaryColor }
+                borderRadius: '5px'
               }}
             />
           ))}
@@ -118,9 +142,15 @@ const ResponsiveTabsPage = () => {
 
       {/* Content Section */}
       <Paper sx={{
-        ...containerStyles,
+        // ...containerStyles,
         flexGrow: 1,
-        overflow: 'auto'
+        overflow: 'auto',  
+        width: '600px',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: background1,
+        borderRadius: '14px',
       }}>
         {tabContents.map((content, index) => (
           <TabPanel key={index} value={value} index={index}>

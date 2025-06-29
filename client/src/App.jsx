@@ -17,10 +17,10 @@ import AddPolicy from './pages/addScheme'
 import EditMutual from './pages/editMutual'
 import EditInsurance from './pages/editInsurance'
 import UpdateScheme from './pages/updateScheme'
-import IndividualReports from './pages/individualReports'
-import GroupReports from './pages/groupReports'
+// import IndividualReports from './pages/individualReports'
+// import GroupReports from './pages/groupReports'
 import GroupManagement from './pages/groupManagement'
-import CalenderReports from './pages/monthlyReports'
+// import CalenderReports from './pages/monthlyReports'
 import AddFixedDeposit from './pages/addDebt'
 import EditFixedDeposit from './pages/editDebt'
 import EditPolicy from './pages/editInsurance'
@@ -72,9 +72,9 @@ function App() {
           <Route path = "/addInsurance" element={<AddInsurance/>} />
           <Route path = "/Mutualfunds" element={<EditMutual/>} />
           <Route path = "/Insurance" element={<EditInsurance/>} />
-          <Route path = "/individualReport" element={<IndividualReports/>} />
+          {/* <Route path = "/individualReport" element={<IndividualReports/>} />
           <Route path = "/groupReport" element={<GroupReports/>} />
-          <Route path = "/monthlyCalender" element={<CalenderReports/>} />
+          <Route path = "/monthlyCalender" element={<CalenderReports/>} /> */}
           <Route path = "/MutualfundsUpdate/:id" element={<UpdateScheme/>} />
           <Route path = "/DebtsUpdate/:id" element={<EditFixedDeposit/>} />
           <Route path = "/InsuranceUpdate/:id" element={<EditPolicy/>} />

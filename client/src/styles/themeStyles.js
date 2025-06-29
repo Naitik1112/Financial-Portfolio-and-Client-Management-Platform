@@ -4,6 +4,8 @@ export const getStyles = (darkMode = true) => {
   const background1 = darkMode ? '#1A1E24' : '#f2f2f2';
   const background2 = darkMode ? '#080E17' : '#f2f2f2';
   const background3 = darkMode ? '#232629' : '#f2f2f2';
+  const background4 = darkMode ? '#19212B' : '#f2f2f2';
+  const background5 = darkMode ? '#24292D' : '#f2f2f2';
   const paperBg = darkMode ? '#2c2c2c' : '#fff';
   const border = darkMode ? '#303030' : '#ccc';
   const primaryColor = '#1976D2';
@@ -91,6 +93,16 @@ export const getStyles = (darkMode = true) => {
       // padding: '24px',
       borderRadius: '14px',
       boxShadow: '0 0 4px rgba(2, 94, 254, 0.85)',
+      border: `1px solid ${border}`,
+      transition: 'all 0.3s ease-in-out'
+    },
+
+    containerStyles3: {
+      backgroundColor: background5,
+      color: primaryText,
+      // padding: '24px',
+      borderRadius: '14px',
+      boxShadow: '0 0 4px rgba(160, 192, 246, 0.76)',
       border: `1px solid ${border}`,
       transition: 'all 0.3s ease-in-out'
     }

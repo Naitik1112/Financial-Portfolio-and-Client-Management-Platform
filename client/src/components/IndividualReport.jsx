@@ -26,7 +26,7 @@ const type = [
   { label: 'XLSX', value: 'excel' },
 ];
 
-const AddClient = () => {
+const IndividualReport = () => {
   const [holderName, setHolderName] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [downloadFormat, setDownloadFormat] = useState(null);
@@ -37,7 +37,7 @@ const AddClient = () => {
   const token = localStorage.getItem('jwt');
 
   const { darkMode } = useThemeMode();
-  const { inputStyles, buttonStyles,containerStyles, containerStyles1 } = getStyles(darkMode)
+  const { inputStyles, buttonStyles,containerStyles, containerStyles1, containerStyles3} = getStyles(darkMode)
 
   useEffect(() => {
   const fetchSchemes = async () => {
@@ -180,18 +180,19 @@ const AddClient = () => {
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
-        marginTop: '40px',
         width: '53ch',
         bgcolor: '#1E1E1E',
-        padding: '60px',
-        paddingTop: '30px',
-        paddingBottom: "30px",
-        ...containerStyles
+        padding: '50px',
+        borderRadius: '30px',
+        ...containerStyles3,
+        height: {xs: '400px', sm: '400px',md: '480px', },
+        maxHeight: {xs: '400px',sm: '400px',md: '480px',},
+        overflow: 'auto'
       }}
     >
       <Typography
         sx={{
-          fontSize: '2rem',
+          fontSize: '1.5rem',
           fontWeight: 'bold',
           color: '#fff',
           textAlign: 'center',
@@ -278,4 +279,4 @@ const AddClient = () => {
   );
 };
 
-export default AddClient;
+export default IndividualReport;
