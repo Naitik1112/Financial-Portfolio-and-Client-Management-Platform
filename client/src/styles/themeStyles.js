@@ -27,6 +27,8 @@ export const getStyles = (darkMode = true) => {
     background1,
     background2,
     background3,
+    background4,
+    background5,
 
     inputStyles: {
       '& .MuiInputBase-input': {

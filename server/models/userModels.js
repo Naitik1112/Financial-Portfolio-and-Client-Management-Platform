@@ -14,18 +14,12 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: [true, 'A user should have an email'],
-      unique: true,
       lowercase: true,
       validate: [validator.isEmail, 'Please provide a valid email']
     },
     photo: {
       type: String,
       default: 'default.jpg'
-    },
-    group: {
-      type: String,
-      default: '',
-      unique: true
     },
     groupId: {
       type: mongoose.Schema.Types.ObjectId,

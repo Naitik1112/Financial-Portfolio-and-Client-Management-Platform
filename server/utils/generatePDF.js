@@ -1,13 +1,23 @@
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
+const { sendEmailWithPDF } = require('./email');
 
-const generatePDF = async (data, filePath, res, fields, title, space) => {
+const generatePDF = async (
+  data,
+  filePath,
+  res,
+  fields,
+  title,
+  space,
+  email = null,
+  subject = null,
+  description = null
+) => {
   try {
     // console.log(data);
-    console.log('generate PDF');
     // console.log(fields);
-    // console.log(space);
+    console.log(space);
     const doc = new PDFDocument({
       margin: 30,
       size: 'A4',
@@ -139,10 +149,42 @@ const generatePDF = async (data, filePath, res, fields, title, space) => {
     addDataRows(data, tableTop + maxHeaderHeight);
     doc.end();
 
-    writeStream.on('finish', () => {
-      res.download(filePath, path.basename(filePath), err => {
-        if (!err) fs.unlinkSync(filePath);
-      });
+    // writeStream.on('finish', () => {
+    //   res.download(filePath, path.basename(filePath), err => {
+    //     if (!err) fs.unlinkSync(filePath);
+    //   });
+    // });
+
+    writeStream.on('finish', async () => {
+      console.log(email);
+      if (email) {
+        console.log('passed : ', email);
+        // Send email if email options provided
+        const emailSent = await sendEmailWithPDF(
+          email,
+          subject,
+          description,
+          filePath,
+          title
+        );
+
+        if (emailSent) {
+          fs.unlinkSync(filePath);
+          return res.status(200).json({
+            message: 'PDF generated and email sent successfully'
+          });
+        } else {
+          return res.status(500).json({
+            message: 'PDF generated but email failed to send',
+            downloadUrl: `/download-pdf?path=${encodeURIComponent(filePath)}`
+          });
+        }
+      } else {
+        // Original download behavior
+        res.download(filePath, path.basename(filePath), err => {
+          if (!err) fs.unlinkSync(filePath);
+        });
+      }
     });
   } catch (error) {
     console.error('Error generating PDF:', error);

@@ -39,16 +39,15 @@ const AddClient = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    let name1
-    name1 = name.split(" ")[0]; 
+
+    let name1 = name.split(" ")[0]; 
     const password = name1 + name.length + "123456";
     const passwordConfirm = password;
-    console.log("DOB : ",DOB)
+
     const clientData = {
       name,
       email,
       DOB,
-      group,
       contact,
       pancard,
       password,
@@ -57,6 +56,7 @@ const AddClient = () => {
 
     const backendURL = import.meta.env.VITE_BACKEND_URL;
     const token = localStorage.getItem('jwt');
+
     try {
       const response = await fetch(`${backendURL}/api/v1/users/addUser`, {
         method: 'POST',
@@ -66,31 +66,43 @@ const AddClient = () => {
         },
         body: JSON.stringify(clientData),
       });
-  
-      console.log('Response status:', response.status);
-  
+
       if (response.ok) {
         alert('Client added successfully');
+        window.location.href = "/myClient"; // ✅ Redirect on success
       } else {
-        const responseText = await response.text();  // Get response as plain text
-        console.log('Response body:', responseText);
+        const responseText = await response.text();
         if (responseText) {
           try {
             const error = JSON.parse(responseText);
-            console.error('Error:', error);
+            alert(error.message || 'Something went wrong!');
           } catch (e) {
-            console.error('Error: Failed to parse error response', e);
+            alert('Failed to parse error response.');
           }
         } else {
-          console.error('Error: No response body');
+          alert('No response body received.');
         }
+
+        // 🔁 Reset form fields
+        setName('');
+        setEmail('');
+        setDOB('');
+        setcontact('');
+        setpancard('');
       }
     } catch (error) {
       console.error('Error:', error);
       alert('Error occurred while submitting the form');
+
+      // 🔁 Reset form fields
+      setName('');
+      setEmail('');
+      setDOB('');
+      setcontact('');
+      setpancard('');
     }
   };
-  
+
   
 
   return (
@@ -144,14 +156,6 @@ const AddClient = () => {
           sx={inputStyles}
         />
       </LocalizationProvider>
-      <TextField
-        id="outlined-basic-4"
-        label="Group"
-        variant="outlined"
-        value={group}
-        onChange={(e) => setGroup(e.target.value)}
-        sx={inputStyles}
-      />
       <TextField
         id="outlined-basic-5"
         label="Contact Number"

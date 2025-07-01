@@ -10,7 +10,9 @@ import {
   List,
   ListItem,
   Paper,
-  CircularProgress
+  CircularProgress,
+  Modal,
+  Stack
 } from '@mui/material';
 import { getStyles } from "../styles/themeStyles";
 import { useThemeMode } from "../context/ThemeContext";
@@ -37,12 +39,18 @@ const GroupReport = () => {
   const [groupUsers, setGroupUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [sendModalOpen, setSendModalOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+  const [emailOptions, setEmailOptions] = useState([]);
+  const [selectedEmail, setSelectedEmail] = useState(null);
 
   const { darkMode } = useThemeMode();
-  const { inputStyles, buttonStyles, containerStyles1, containerStyles3, background,background2,background3, background1,fontColor,paperBg } = getStyles(darkMode);
+  const { inputStyles, buttonStyles, containerStyles1, containerStyles3, background,background2,background3,background4,background5, background1,fontColor,paperBg, primaryColor, secondaryColor, tertiaryColor } = getStyles(darkMode);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -63,7 +71,6 @@ const GroupReport = () => {
         try {
           const users = await fetchUsersOfGroup(selectedGroup.value);
           setGroupUsers(users);
-          // Initially select all users
           setSelectedUsers(users.map(user => user._id));
         } catch (error) {
           console.error('Error fetching group users:', error);
@@ -74,6 +81,20 @@ const GroupReport = () => {
     };
     fetchUsers();
   }, [selectedGroup]);
+
+  useEffect(() => {
+    if (groupUsers.length > 0) {
+      const emails = groupUsers.map(user => ({
+        label: user.email,
+        value: user.email
+      }));
+      setEmailOptions(emails);
+      // Set the first email as default if no email is selected
+      if (emails.length > 0 && !selectedEmail) {
+        setSelectedEmail(emails[0]);
+      }
+    }
+  }, [groupUsers]);
 
   const handleUserSelection = (userId, isChecked) => {
     setSelectedUsers(prev => 
@@ -86,6 +107,19 @@ const GroupReport = () => {
     setSelectedUsers(isChecked ? groupUsers.map(user => user._id) : []);
   };
 
+  const resetForm = () => {
+    setSelectedGroup(null);
+    setSelectedReport(null);
+    setDownloadFormat(null);
+    setSelectedUsers([]);
+    setGroupUsers([]);
+    setSelectedEmail(null);
+    setEmailOptions([]);
+    setTitle('');
+    setDescription('');
+    setSendModalOpen(false);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
   
@@ -94,7 +128,6 @@ const GroupReport = () => {
       return;
     }
   
-    // Determine the API endpoint URL based on the selected report type
     let apiUrl;
     if (selectedReport.label === 'Life Insurance of Group') {
       apiUrl = `${backendURL}/api/v1/reports/policyByGroup`;
@@ -124,7 +157,7 @@ const GroupReport = () => {
         },
         body: JSON.stringify(payload),
       });
-      console.log(response)
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -140,116 +173,277 @@ const GroupReport = () => {
       a.click();
       window.URL.revokeObjectURL(fileUrl);
       alert('Report downloaded successfully!');
+      resetForm();
     } catch (error) {
       console.error('Error:', error.message);
       alert(`Failed to download report: ${error.message}`);
+      resetForm();
     }
-    setSelectedGroup(null);
-    setSelectedReport(null);
-    setDownloadFormat(null);
-    setSelectedUsers([]);
+    resetForm();
+  };
+
+  const handleSendToClient = async () => {
+    if (!selectedGroup || !selectedReport || !downloadFormat || selectedUsers.length === 0) {
+      alert('Please fill all fields and select at least one user!');
+      return;
+    }
+    setSendModalOpen(true);
+  };
+
+  const handleSendSubmit = async () => {
+    if (!selectedEmail || !title || !description) {
+      alert('Please fill all fields!');
+      return;
+    }
+
+    let apiUrl;
+    if (selectedReport.label === 'Life Insurance of Group') {
+      apiUrl = `${backendURL}/api/v1/reports/policyByGroup`;
+    } else if (selectedReport.label === 'Mutual Funds of Group') {
+      apiUrl = `${backendURL}/api/v1/reports/schemeByGroup`;
+    } else if (selectedReport.label === 'General Insurance of Group') {
+      apiUrl = `${backendURL}/api/v1/reports/generalPolicyByGroup`;
+    } else if (selectedReport.label === 'Debts of Group') {
+      apiUrl = `${backendURL}/api/v1/reports/debtsByGroup`;
+    } else {
+      alert('Invalid report type selected!');
+      return;
+    }
+
+    const payload = {
+      groupName: selectedGroup.label,
+      userIds: selectedUsers,
+      format: downloadFormat.value,
+      email: selectedEmail.value,
+      title,
+      description
+    };
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      alert('Report sent successfully!');
+      resetForm();
+    } catch (error) {
+      console.error('Error:', error.message);
+      alert(`Failed to send report: ${error.message}`);
+      resetForm();
+    }
+
   };
 
   return (
-    <Box
-      component="form"
-      onSubmit={handleSubmit}
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-        width: '53ch',
-        bgcolor: '#1E1E1E',
-        padding: '50px',
-        borderRadius: '30px',
-        ...containerStyles3,
-        height: {xs: '400px', sm: '400px',md: '480px', },
-        maxHeight: {xs: '400px',sm: '400px',md: '480px',},
-        overflow: 'auto'
-      }}
-    >
-      <Typography
+    <>
+      <Box
+        component="form"
+        onSubmit={handleSubmit}
         sx={{
-          fontSize: '1.5rem',
-          fontWeight: 'bold',
-          textAlign: 'center',
-          mb: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          width: '53ch',
+          bgcolor: '#1E1E1E',
+          padding: '50px',
+          borderRadius: '30px',
+          ...containerStyles3,
+          height: {xs: '400px', sm: '400px',md: '480px', },
+          maxHeight: {xs: '400px',sm: '400px',md: '480px',},
+          overflow: 'auto'
         }}
       >
-        Group Reports
-      </Typography>
+        <Typography
+          sx={{
+            fontSize: '1.5rem',
+            fontWeight: 'bold',
+            textAlign: 'center',
+            mb: 2,
+          }}
+        >
+          Group Reports
+        </Typography>
 
-      <Autocomplete
-        sx={inputStyles}
-        options={reportType}
-        onChange={(event, value) => setSelectedReport(value)}
-        renderInput={(params) => <TextField {...params} label="Report Type" />}
-      />
+        <Autocomplete
+          sx={inputStyles}
+          options={reportType}
+          value={selectedReport}
+          onChange={(event, value) => setSelectedReport(value)}
+          renderInput={(params) => <TextField {...params} label="Report Type" />}
+        />
 
-      <Autocomplete
-        sx={inputStyles}
-        options={groups}
-        onChange={(event, value) => setSelectedGroup(value)}
-        renderInput={(params) => <TextField {...params} label="Group Name" />}
-      />
 
-      <Autocomplete
-        sx={inputStyles}
-        options={type}
-        onChange={(event, value) => setDownloadFormat(value)}
-        renderInput={(params) => <TextField {...params} label="Download Format" />}
-      />
+        <Autocomplete
+          sx={inputStyles}
+          options={groups}
+          value={selectedGroup}
+          onChange={(event, value) => setSelectedGroup(value)}
+          renderInput={(params) => <TextField {...params} label="Group Name" />}
+        />
 
-      {selectedGroup && (
-        <Paper sx={{ p: 2, height: '100%', backgroundColor: background3, color:fontColor }}>
-          {loading ? (
-            <Box display="flex" justifyContent="center">
-              <CircularProgress />
-            </Box>
-          ) : (
-            <>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={selectedUsers.length === groupUsers.length}
-                    indeterminate={
-                      selectedUsers.length > 0 && 
-                      selectedUsers.length < groupUsers.length
-                    }
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                  />
-                }
-                label="Select All"
-              />
-              <List>
-                {groupUsers.map((user) => (
-                  <ListItem key={user._id} dense>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={selectedUsers.includes(user._id)}
-                          onChange={(e) => handleUserSelection(user._id, e.target.checked)}
-                        />
+        <Autocomplete
+          sx={inputStyles}
+          options={type}
+          value={downloadFormat}
+          onChange={(event, value) => setDownloadFormat(value)}
+          renderInput={(params) => <TextField {...params} label="Download Format" />}
+        />
+
+        {selectedGroup && (
+          <Paper sx={{ p: 2, height: '100%', backgroundColor: background3, color:fontColor }}>
+            {loading ? (
+              <Box display="flex" justifyContent="center">
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={selectedUsers.length === groupUsers.length}
+                      indeterminate={
+                        selectedUsers.length > 0 && 
+                        selectedUsers.length < groupUsers.length
                       }
-                      label={`${user.name} (${user.email})`}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
                     />
-                  </ListItem>
-                ))}
-              </List>
-            </>
-          )}
-        </Paper>
-      )}
+                  }
+                  label="Select All"
+                />
+                <List>
+                  {groupUsers.map((user) => (
+                    <ListItem key={user._id} dense>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={selectedUsers.includes(user._id)}
+                            onChange={(e) => handleUserSelection(user._id, e.target.checked)}
+                          />
+                        }
+                        label={`${user.name} (${user.email})`}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </>
+            )}
+          </Paper>
+        )}
 
-      <Button 
-        size="medium" 
-        variant="contained" 
-        sx={buttonStyles}
-        type="submit"
+        <Stack direction="row" spacing={2}>
+          <Button 
+            size="medium" 
+            variant="contained" 
+            sx={buttonStyles}
+            type="submit"
+            fullWidth
+          >
+            Generate Report
+          </Button>
+          <Button 
+            size="medium" 
+            variant="contained" 
+            sx={buttonStyles}
+            onClick={handleSendToClient}
+            fullWidth
+          >
+            Send Report to Client
+          </Button>
+        </Stack>
+      </Box>
+
+      {/* Send Report Modal */}
+      <Modal
+        open={sendModalOpen}
+        onClose={() => setSendModalOpen(false)}
+        aria-labelledby="send-report-modal"
+        aria-describedby="send-report-form"
       >
-        Generate Report
-      </Button>
-    </Box>
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 400,
+          bgcolor: background5,
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 2
+        }}>
+          <Typography variant="h6" mb={2} sx={{color: fontColor}}>Send Report to Client</Typography>
+          <Autocomplete
+            options={emailOptions}
+            value={selectedEmail}
+            onChange={(event, newValue) => setSelectedEmail(newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Client Email"
+                margin="normal"
+                sx={{
+                  '& .MuiInputBase-input': { color: fontColor },
+                  '& .MuiInputLabel-root': { color: fontColor },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': { borderColor: fontColor },
+                    '&:hover fieldset': { borderColor: fontColor },
+                  }
+                }}
+              />
+            )}
+          />
+          <TextField
+            fullWidth
+            label="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            margin="normal"
+            sx={{
+              '& .MuiInputBase-input': { color: fontColor },
+              '& .MuiInputLabel-root': { color: fontColor },
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': { borderColor: fontColor },
+                '&:hover fieldset': { borderColor: fontColor },
+              }
+            }}
+          />
+          <TextField
+            fullWidth
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            margin="normal"
+            multiline
+            rows={4}
+            sx={{
+              '& .MuiInputBase-input': { color: fontColor },
+              '& .MuiInputLabel-root': { color: fontColor },
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': { borderColor: fontColor },
+                '&:hover fieldset': { borderColor: fontColor },
+              }
+            }}
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            <Button onClick={() => setSendModalOpen(false)} sx={{ mr: 2 }}>
+              Cancel
+            </Button>
+            <Button variant="contained" onClick={handleSendSubmit}>
+              Send
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
+    </>
   );
 };
 

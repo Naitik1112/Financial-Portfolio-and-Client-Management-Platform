@@ -44,7 +44,7 @@ const UserDetails = ({ id }) => {
           name: user.name || "",
           email: user.email || "",
           DOB: user.DOB ? dayjs(user.DOB) : null,
-          group: user.groupId.name || "",
+          group: user?.groupId?.name || "",
           pancard: user.pancard || "",
           contact: user.contact || "",
         });
@@ -87,11 +87,13 @@ const UserDetails = ({ id }) => {
         width: { 
           xs: '200px',   // 0-599px
           sm: '400px',   // 600-899px
-          md: '770px',   // 900-1199px
+          md: '700px',   // 900-1199px
           lg: '1000px',   // 1200-1535px
-          xl: 'max(65%, 830px)' // 1536px+
+          xl: 'max(65%, 750px)' // 1536px+
         },
         borderColor: "#fff",
+        borderStyle: 'solid',
+        borderWidth: '0px',
         marginLeft: "50px",
         display: "flex",
         gap: 4,

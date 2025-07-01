@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import "./Table.css";
 import Brand from "./../../assets/search.png";
 import DeleteIcon from "./../../assets/delete.png";
+import CircularProgress from '@mui/material/CircularProgress';
+import Box from '@mui/material/Box';
 
 import { useThemeMode } from '../../context/ThemeContext';
 import { getStyles } from "../../styles/themeStyles";
@@ -11,18 +13,18 @@ const App = () => {
   const [sortColumn, setSortColumn] = useState(null);
   const [sortAsc, setSortAsc] = useState(true);
   const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
 
-  const { darkMode, toggleTheme } = useThemeMode();
-  const { containerStyles, containerStyles1 } = getStyles(darkMode);
+  const { darkMode } = useThemeMode();
   const {
     primaryColor,
     secondaryColor,
     tertiaryColor,
     fourthColor,
     fontColor,
-    body,
     background,
     background1,
     background2,
@@ -32,8 +34,6 @@ const App = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const token = localStorage.getItem('jwt');
-        
         const response = await fetch(`${backendURL}/api/v1/users/`, {
           method: "GET",
           credentials: "include",
@@ -42,10 +42,11 @@ const App = () => {
           }
         });
         const data = await response.json();
-        console.log(data)
         setCustomers(data.data);
       } catch (error) {
         console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -85,8 +86,8 @@ const App = () => {
 
   const sortedCustomers = [...filteredCustomers].sort((a, b) => {
     if (sortColumn) {
-      const valueA = a[sortColumn] ? a[sortColumn].toString().toLowerCase() : "";
-      const valueB = b[sortColumn] ? b[sortColumn].toString().toLowerCase() : "";
+      const valueA = a[sortColumn]?.toString().toLowerCase() || "";
+      const valueB = b[sortColumn]?.toString().toLowerCase() || "";
       return sortAsc ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
     }
     return 0;
@@ -112,6 +113,7 @@ const App = () => {
       }}
       className="table" 
       id="customers_table">
+      
       <section className="table__header"
         style={{
           display: "flex",
@@ -162,70 +164,75 @@ const App = () => {
           Add Client
         </button>
       </section>
-      <section className="table__body">
-        <table >
-          <thead style={{ backgroundColor: background2 }} >
-            <tr>
-              {["name", "DOB", "group", "age"].map((col) => (
-                <th
-                  key={col}
-                  onClick={() => handleSort(col)}
-                  style={{
-                    // padding: "12px",
-                    cursor: "pointer",
-                    borderBottom: `1px solid ${primaryColor}`,
-                    // textAlign: "left"
-                  }}
-                >
-                  {col.toUpperCase()} <span>{sortAsc && sortColumn === col ? "↑" : "↓"}</span>
-                </th>
-              ))}
-              <th style={{  borderBottom: `1px solid ${primaryColor}` }}>Actions</th>
-              <th style={{  borderBottom: `1px solid ${primaryColor}` }}>Delete</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedCustomers.map((customer) => (
-              <tr key={customer._id}
-                style={{
-                  borderBottom: `2px solid ${tertiaryColor}`,
-                  backgroundColor: background3
-                }}>
-                <td>{customer.name || "n.d."}</td>
-                <td>{customer.DOB ? new Date(customer.DOB).toLocaleDateString() : "n.d."}</td>
-                <td>{customer.groupId.name || "n.d."}</td>
-                <td>{parseInt(customer.age, 10) || "n.d."}</td>
-                <td>
-                  <button
-                    onClick={() => (window.location.href = `/profile/${customer._id}`)}
-                    className="view-more-btn"
+
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+          <CircularProgress sx={{ color: primaryColor }} />
+        </Box>
+      ) : (
+        <section className="table__body">
+          <table>
+            <thead style={{ backgroundColor: background2 }}>
+              <tr>
+                {["name", "DOB", "group", "age"].map((col) => (
+                  <th
+                    key={col}
+                    onClick={() => handleSort(col)}
                     style={{
-                      backgroundColor: background2,
-                      color: "#fff",
-                      padding: "6px 12px",
-                      border: "none",
-                      borderRadius: "4px",
-                      fontSize: "14px",
-                      cursor: "pointer"
+                      cursor: "pointer",
+                      borderBottom: `1px solid ${primaryColor}`
                     }}
                   >
-                    View More
-                  </button>
-                </td>
-                <td>
-                  <img
-                    src={DeleteIcon}
-                    alt="Delete"
-                    className="delete-icon"
-                    onClick={() => handleDelete(customer)}
-                    style={{ cursor: "pointer", width: "20px", height: "20px" }}
-                  />
-                </td>
+                    {col.toUpperCase()} <span>{sortAsc && sortColumn === col ? "↑" : "↓"}</span>
+                  </th>
+                ))}
+                <th style={{ borderBottom: `1px solid ${primaryColor}` }}>Actions</th>
+                <th style={{ borderBottom: `1px solid ${primaryColor}` }}>Delete</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+            </thead>
+            <tbody>
+              {sortedCustomers.map((customer) => (
+                <tr key={customer._id}
+                  style={{
+                    borderBottom: `2px solid ${tertiaryColor}`,
+                    backgroundColor: background3
+                  }}>
+                  <td>{customer.name || "N/A"}</td>
+                  <td>{customer.DOB ? new Date(customer.DOB).toLocaleDateString() : "N/A"}</td>
+                  <td>{customer?.groupId?.name || "n.d."}</td>
+                  <td>{parseInt(customer.age, 10) || "N/A"}</td>
+                  <td>
+                    <button
+                      onClick={() => (window.location.href = `/profile/${customer._id}`)}
+                      className="view-more-btn"
+                      style={{
+                        backgroundColor: background2,
+                        color: "#fff",
+                        padding: "6px 12px",
+                        border: "none",
+                        borderRadius: "4px",
+                        fontSize: "14px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      View More
+                    </button>
+                  </td>
+                  <td>
+                    <img
+                      src={DeleteIcon}
+                      alt="Delete"
+                      className="delete-icon"
+                      onClick={() => handleDelete(customer)}
+                      style={{ cursor: "pointer", width: "20px", height: "20px" }}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
     </main>
   );
 };

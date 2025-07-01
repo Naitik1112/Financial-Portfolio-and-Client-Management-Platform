@@ -158,27 +158,55 @@ exports.getClaimsByClient = CatchAsync(async (req, res) => {
       __dirname,
       `${mergedPolicies[0].clientId}_Claims_Report.pdf`
     );
-    generatePDF(
-      mergedPolicies,
-      pdfPath,
-      res,
-      lifeInsuranceFields,
-      `Claims report of ${mergedPolicies[0].clientId}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generatePDF(
+        mergedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `Claims report of ${mergedPolicies[0].clientId}.pdf`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generatePDF(
+        mergedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `Claims report of ${mergedPolicies[0].clientId}.pdf`,
+        'N/A'
+      );
+    }
   } else if (req.format === 'excel') {
     const excelPath = path.join(
       __dirname,
       `${mergedPolicies[0].clientId}_Claims_Report.xlsx`
     );
-    generateExcel(
-      mergedPolicies,
-      excelPath,
-      res,
-      lifeInsuranceFields,
-      `Claims report of ${mergedPolicies[0].clientId}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generateExcel(
+        mergedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `Claims report of ${mergedPolicies[0].clientId}.xlsx`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generateExcel(
+        mergedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `Claims report of ${mergedPolicies[0].clientId}.xlsx`,
+        'N/A'
+      );
+    }
   } else {
     return res.status(400).json({
       status: 'fail',
@@ -402,26 +430,56 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
 
     if (req.format === 'pdf') {
       const pdfPath = path.join(__dirname, 'mutual_funds_report.pdf');
-      await generatePDF(
-        formattedSchemes,
-        pdfPath,
-        res,
-        mutualFundFields,
-        reportTitle,
-        reportDate,
-        'N/A'
-      );
+      if (req.body.email) {
+        await generatePDF(
+          formattedSchemes,
+          pdfPath,
+          res,
+          mutualFundFields,
+          reportTitle + '.pdf',
+          // reportDate,
+          'N/A',
+          req.body.email,
+          req.body.title,
+          req.body.description
+        );
+      } else {
+        await generatePDF(
+          formattedSchemes,
+          pdfPath,
+          res,
+          mutualFundFields,
+          reportTitle + '.pdf',
+          // reportDate,
+          'N/A'
+        );
+      }
     } else if (req.format === 'excel') {
       const excelPath = path.join(__dirname, 'mutual_funds_report.xlsx');
-      await generateExcel(
-        formattedSchemes,
-        excelPath,
-        res,
-        mutualFundFields,
-        reportTitle,
-        reportDate,
-        'N/A'
-      );
+      if (req.body.email) {
+        await generateExcel(
+          formattedSchemes,
+          excelPath,
+          res,
+          mutualFundFields,
+          reportTitle + '.xlsx',
+          // reportDate,
+          'N/A',
+          req.body.email,
+          req.body.title,
+          req.body.description
+        );
+      } else {
+        await generateExcel(
+          formattedSchemes,
+          excelPath,
+          res,
+          mutualFundFields,
+          reportTitle + '.xlsx',
+          // reportDate,
+          'N/A'
+        );
+      }
     } else {
       res.status(200).json({
         status: 'success',
@@ -569,26 +627,56 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
 
     if (format === 'pdf') {
       const pdfPath = path.join(__dirname, 'transactions_report.pdf');
-      await generatePDF(
-        transactions,
-        pdfPath,
-        res,
-        transactionFields,
-        reportTitle,
-        reportDate,
-        clientName
-      );
+      if (req.body.email) {
+        await generatePDF(
+          transactions,
+          pdfPath,
+          res,
+          transactionFields,
+          reportTitle + '.pdf',
+          // reportDate,
+          clientName,
+          req.body.email,
+          req.body.title,
+          req.body.description
+        );
+      } else {
+        await generatePDF(
+          transactions,
+          pdfPath,
+          res,
+          transactionFields,
+          reportTitle + '.pdf',
+          // reportDate,
+          clientName
+        );
+      }
     } else if (format === 'excel') {
       const excelPath = path.join(__dirname, 'transactions_report.xlsx');
-      await generateExcel(
-        transactions,
-        excelPath,
-        res,
-        transactionFields,
-        reportTitle,
-        reportDate,
-        clientName
-      );
+      if (req.body.email) {
+        await generateExcel(
+          transactions,
+          excelPath,
+          res,
+          transactionFields,
+          reportTitle + '.xlsx',
+          // reportDate,
+          clientName,
+          req.body.email,
+          req.body.title,
+          req.body.description
+        );
+      } else {
+        await generateExcel(
+          transactions,
+          excelPath,
+          res,
+          transactionFields,
+          reportTitle + '.xlsx',
+          // reportDate,
+          clientName
+        );
+      }
     } else {
       return res.status(200).json({
         status: 'success',
@@ -663,26 +751,54 @@ exports.getPolicyByClient = CatchAsync(async (req, res) => {
   if (req.format === 'pdf') {
     // Create and send a PDF file
     const pdfPath = path.join(__dirname, `${name}_life_Ins_report.pdf`);
-    console.log(pdfPath);
-    generatePDF(
-      formattedPolicies,
-      pdfPath,
-      res,
-      lifeInsuranceFields,
-      `Life Insurance report of ${formattedPolicies[0].holderName}`,
-      'N/A'
-    );
+    // console.log(pdfPath);
+    if (req.body.email) {
+      generatePDF(
+        formattedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `Life Insurance report of ${formattedPolicies[0].holderName}.pdf`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generatePDF(
+        formattedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `Life Insurance report of ${formattedPolicies[0].holderName}.pdf`,
+        'N/A'
+      );
+    }
   } else if (req.format === 'excel') {
     // Create and send an Excel file
     const excelPath = path.join(__dirname, `${name}_life_Ins_report.xlsx`);
-    generateExcel(
-      formattedPolicies,
-      excelPath,
-      res,
-      lifeInsuranceFields,
-      `Life Insurance report of ${formattedPolicies[0].holderName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generateExcel(
+        formattedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `Life Insurance report of ${formattedPolicies[0].holderName}.xlsx`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generateExcel(
+        formattedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `Life Insurance report of ${formattedPolicies[0].holderName}.xlsx`,
+        'N/A'
+      );
+    }
   } else {
     return res.status(400).json({
       status: 'fail',
@@ -733,30 +849,58 @@ exports.getGeneralPolicyByClient = CatchAsync(async (req, res) => {
     { label: 'Nominee 2', value: 'nominee2Name' },
     { label: 'Nominee 3', value: 'nominee3Name' }
   ];
-  console.log(formattedPolicies);
+  // console.log(formattedPolicies);
   // Step 4: Generate PDF or Excel
   if (req.format === 'pdf') {
     // Create and send a PDF file
     const pdfPath = path.join(__dirname, `${name}_General_Ins_report.pdf`);
-    generatePDF(
-      formattedPolicies,
-      pdfPath,
-      res,
-      lifeInsuranceFields,
-      `General Insurance report of ${formattedPolicies[0].holderName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generatePDF(
+        formattedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `General Insurance report of ${formattedPolicies[0].holderName}.pdf`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generatePDF(
+        formattedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `General Insurance report of ${formattedPolicies[0].holderName}.pdf`,
+        'N/A'
+      );
+    }
   } else if (req.format === 'excel') {
     // Create and send an Excel file
     const excelPath = path.join(__dirname, `${name}_General_Ins_report.xlsx`);
-    generateExcel(
-      formattedPolicies,
-      excelPath,
-      res,
-      lifeInsuranceFields,
-      `General Insurance report of ${formattedPolicies[0].holderName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generateExcel(
+        formattedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `General Insurance report of ${formattedPolicies[0].holderName}.xlsx`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generateExcel(
+        formattedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `General Insurance report of ${formattedPolicies[0].holderName}.xlsx`,
+        'N/A'
+      );
+    }
   } else {
     return res.status(400).json({
       status: 'fail',
@@ -782,7 +926,7 @@ exports.getDebtsByClient = CatchAsync(async (req, res) => {
     });
   }
 
-  console.log(policies);
+  // console.log(policies);
   const formattedPolicies = policies.map(policies => {
     const startDate = new Date(policies.startDate);
     const maturityDate = new Date(policies.MaturityDate);
@@ -826,25 +970,53 @@ exports.getDebtsByClient = CatchAsync(async (req, res) => {
   if (req.format === 'pdf') {
     // Create and send a PDF file
     const pdfPath = path.join(__dirname, `${name}_General_Ins_report.pdf`);
-    generatePDF(
-      formattedPolicies,
-      pdfPath,
-      res,
-      lifeInsuranceFields,
-      `Debt report of ${formattedPolicies[0].holderName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generatePDF(
+        formattedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `Debt report of ${formattedPolicies[0].holderName}.pdf`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generatePDF(
+        formattedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `Debt report of ${formattedPolicies[0].holderName}.pdf`,
+        'N/A'
+      );
+    }
   } else if (req.format === 'excel') {
     // Create and send an Excel file
     const excelPath = path.join(__dirname, `${name}_General_Ins_report.xlsx`);
-    generateExcel(
-      formattedPolicies,
-      excelPath,
-      res,
-      lifeInsuranceFields,
-      `Debt report of ${formattedPolicies[0].holderName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generateExcel(
+        formattedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `Debt report of ${formattedPolicies[0].holderName}.xlsx`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generateExcel(
+        formattedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `Debt report of ${formattedPolicies[0].holderName}.xlsx`,
+        'N/A'
+      );
+    }
   } else {
     return res.status(400).json({
       status: 'fail',
@@ -992,24 +1164,52 @@ exports.getCashFlowByClient = CatchAsync(async (req, res) => {
   // Generate PDF or Excel
   if (format === 'pdf') {
     const pdfPath = path.join(__dirname, `${client?.name}_Cash_Flow.pdf`);
-    generatePDF(
-      cashFlowData,
-      pdfPath,
-      res,
-      cashFlowLabels,
-      `Cash Flow Report of ${client.name}`,
-      '0'
-    );
+    if (req.body.email) {
+      generatePDF(
+        cashFlowData,
+        pdfPath,
+        res,
+        cashFlowLabels,
+        `Cash Flow Report of ${client.name}.pdf`,
+        '0',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generatePDF(
+        cashFlowData,
+        pdfPath,
+        res,
+        cashFlowLabels,
+        `Cash Flow Report of ${client.name}.pdf`,
+        '0'
+      );
+    }
   } else if (format === 'excel') {
     const excelPath = path.join(__dirname, `${client?.name}_Cash_Flow.xlsx`);
-    generateExcel(
-      cashFlowData,
-      excelPath,
-      res,
-      cashFlowLabels,
-      `Cash Flow Report of ${client.name}`,
-      '0'
-    );
+    if (req.body.email) {
+      generateExcel(
+        cashFlowData,
+        excelPath,
+        res,
+        cashFlowLabels,
+        `Cash Flow Report of ${client.name}.xlsx`,
+        '0',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generateExcel(
+        cashFlowData,
+        excelPath,
+        res,
+        cashFlowLabels,
+        `Cash Flow Report of ${client.name}.xlsx`,
+        '0'
+      );
+    }
   } else {
     return res.status(400).json({
       status: 'fail',

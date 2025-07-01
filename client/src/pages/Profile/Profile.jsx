@@ -293,11 +293,11 @@ export default function VerticalTabs() {
             },
           }}
         >
-          <Tab label="Profile" {...a11yProps(0)} sx={{ borderRadius: '5px' }} />
-          <Tab label="Mutual Funds" {...a11yProps(1)} sx={{ borderRadius: '5px' }} />
-          <Tab label="Life Insurance" {...a11yProps(2)} sx={{ borderRadius: '5px' }} />
-          <Tab label="General Insurance" {...a11yProps(3)} sx={{ borderRadius: '5px' }} />
-          <Tab label="Debts" {...a11yProps(4)} sx={{ borderRadius: '5px' }} />
+          <Tab label="Profile" {...a11yProps(0)} sx={{ borderTopLeftRadius: '10px', borderBottomLeftRadius: '10px' }} />
+          <Tab label="Mutual Funds" {...a11yProps(1)} sx={{ borderTopLeftRadius: '10px', borderBottomLeftRadius: '10px' }} />
+          <Tab label="Life Insurance" {...a11yProps(2)} sx={{ borderTopLeftRadius: '10px', borderBottomLeftRadius: '10px' }} />
+          <Tab label="General Insurance" {...a11yProps(3)} sx={{ borderTopLeftRadius: '10px', borderBottomLeftRadius: '10px' }} />
+          <Tab label="Debts" {...a11yProps(4)} sx={{ borderTopLeftRadius: '10px', borderBottomLeftRadius: '10px' }} />
         </Tabs>
       </Paper>
 

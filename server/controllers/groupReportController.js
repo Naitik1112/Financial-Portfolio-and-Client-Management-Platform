@@ -172,27 +172,55 @@ exports.getSchemeByGroup = CatchAsync(async (req, res) => {
       __dirname,
       `${groupName}_Mutual_Funds_Report.pdf`
     );
-    generatePDF(
-      formattedSchemes,
-      pdfPath,
-      res,
-      mutualFundFields,
-      `Mutual Funds report of group ${groupName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generatePDF(
+        formattedSchemes,
+        pdfPath,
+        res,
+        mutualFundFields,
+        `Mutual Funds report of group ${groupName}.pdf`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generatePDF(
+        formattedSchemes,
+        pdfPath,
+        res,
+        mutualFundFields,
+        `Mutual Funds report of group ${groupName}.pdf`,
+        'N/A'
+      );
+    }
   } else if (format === 'excel') {
     const excelPath = path.join(
       __dirname,
       `${groupName}_Mutual_Funds_Report.xlsx`
     );
-    generateExcel(
-      formattedSchemes,
-      excelPath,
-      res,
-      mutualFundFields,
-      `Mutual Funds report of group ${groupName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generateExcel(
+        formattedSchemes,
+        excelPath,
+        res,
+        mutualFundFields,
+        `Mutual Funds report of group ${groupName}.xlsx`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generateExcel(
+        formattedSchemes,
+        excelPath,
+        res,
+        mutualFundFields,
+        `Mutual Funds report of group ${groupName}.xlsx`,
+        'N/A'
+      );
+    }
   } else {
     return res.status(400).json({
       status: 'fail',
@@ -257,26 +285,55 @@ exports.getPolicyByGroup = CatchAsync(async (req, res) => {
   // Step 4: Generate PDF or Excel
   if (format === 'pdf') {
     // Create and send a PDF file
-    const pdfPath = path.join(__dirname, `${groupName}_life_Ins_report.pdf`);
-    generatePDF(
-      formattedPolicies,
-      pdfPath,
-      res,
-      lifeInsuranceFields,
-      `Life Insurance report of group ${groupName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      const pdfPath = path.join(__dirname, `${groupName}_life_Ins_report.pdf`);
+      generatePDF(
+        formattedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `Life Insurance report of group ${groupName}.pdf`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      const pdfPath = path.join(__dirname, `${groupName}_life_Ins_report.pdf`);
+      generatePDF(
+        formattedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `Life Insurance report of group ${groupName}.pdf`,
+        'N/A'
+      );
+    }
   } else if (format === 'excel') {
     // Create and send an Excel file
     const excelPath = path.join(__dirname, `${groupName}_life_Ins_report.xlsx`);
-    generateExcel(
-      formattedPolicies,
-      excelPath,
-      res,
-      lifeInsuranceFields,
-      `Life Insurance report of group ${groupName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generateExcel(
+        formattedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `Life Insurance report of group ${groupName}.xlsx`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generateExcel(
+        formattedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `Life Insurance report of group ${groupName}.xlsx`,
+        'N/A'
+      );
+    }
   } else {
     return res.status(400).json({
       status: 'fail',
@@ -339,28 +396,56 @@ exports.getGeneralPolicyByGroup = CatchAsync(async (req, res) => {
   if (format === 'pdf') {
     // Create and send a PDF file
     const pdfPath = path.join(__dirname, `${groupName}_General_Ins_report.pdf`);
-    generatePDF(
-      formattedPolicies,
-      pdfPath,
-      res,
-      lifeInsuranceFields,
-      `General Insurance report of group ${groupName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generatePDF(
+        formattedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `General Insurance report of group ${groupName}.pdf`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generatePDF(
+        formattedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `General Insurance report of group ${groupName}.pdf`,
+        'N/A'
+      );
+    }
   } else if (format === 'excel') {
     // Create and send an Excel file
     const excelPath = path.join(
       __dirname,
       `${groupName}_General_Ins_report.xlsx`
     );
-    generateExcel(
-      formattedPolicies,
-      excelPath,
-      res,
-      lifeInsuranceFields,
-      `General Insurance report of group ${groupName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generateExcel(
+        formattedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `General Insurance report of group ${groupName}.xlsx`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generateExcel(
+        formattedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `General Insurance report of group ${groupName}.xlsx`,
+        'N/A'
+      );
+    }
   } else {
     return res.status(400).json({
       status: 'fail',
@@ -438,28 +523,56 @@ exports.getDebtsByGroup = CatchAsync(async (req, res) => {
   if (format === 'pdf') {
     // Create and send a PDF file
     const pdfPath = path.join(__dirname, `${groupName}_General_Ins_report.pdf`);
-    generatePDF(
-      formattedPolicies,
-      pdfPath,
-      res,
-      lifeInsuranceFields,
-      `Debt report of group ${groupName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generatePDF(
+        formattedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `Debt report of group ${groupName}.pdf`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generatePDF(
+        formattedPolicies,
+        pdfPath,
+        res,
+        lifeInsuranceFields,
+        `Debt report of group ${groupName}.pdf`,
+        'N/A'
+      );
+    }
   } else if (format === 'excel') {
     // Create and send an Excel file
     const excelPath = path.join(
       __dirname,
       `${groupName}_General_Ins_report.xlsx`
     );
-    generateExcel(
-      formattedPolicies,
-      excelPath,
-      res,
-      lifeInsuranceFields,
-      `Debt report of group ${groupName}`,
-      'N/A'
-    );
+    if (req.body.email) {
+      generateExcel(
+        formattedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `Debt report of group ${groupName}.xlsx`,
+        'N/A',
+        req.body.email,
+        req.body.title,
+        req.body.description
+      );
+    } else {
+      generateExcel(
+        formattedPolicies,
+        excelPath,
+        res,
+        lifeInsuranceFields,
+        `Debt report of group ${groupName}.xlsx`,
+        'N/A'
+      );
+    }
   } else {
     return res.status(400).json({
       status: 'fail',

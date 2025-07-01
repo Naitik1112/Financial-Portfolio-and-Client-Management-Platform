@@ -133,7 +133,8 @@ const ResponsiveTabsPage = () => {
               {...a11yProps(index)}
               sx={{
                 color: fontColor,
-                borderRadius: '5px'
+                borderTopLeftRadius : '10px',
+                borderBottomLeftRadius: '10px'
               }}
             />
           ))}
