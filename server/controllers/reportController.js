@@ -46,8 +46,9 @@ exports.getUserId = CatchAsync(async (req, res, next) => {
 });
 
 exports.getClaimsByClient = CatchAsync(async (req, res) => {
-  const userId = req.userId; // Assuming `req.userId` contains the authenticated user's ID
+  const userId = req.userId;
 
+  // Fetch general claims
   const generalClaimsRaw = await General.find({
     clientId: userId,
     claims: { $ne: [] }
@@ -57,11 +58,11 @@ exports.getClaimsByClient = CatchAsync(async (req, res) => {
     .populate('nominee2Id', 'name')
     .populate('nominee3Id', 'name');
 
-  // Transform data to extract required fields
+  // Transform general claims data
   const generalClaims = generalClaimsRaw.flatMap(doc =>
     doc.claims.map(claim => ({
       claimId: claim.claimId,
-      policyId: doc.policyNumber, // Assuming policyNumber is policyId
+      policyId: doc.policyNumber,
       policyName: doc.policyName,
       companyName: doc.companyName,
       claim: claim.claim,
@@ -83,60 +84,78 @@ exports.getClaimsByClient = CatchAsync(async (req, res) => {
     .populate('nominee1Id', 'name')
     .populate('nominee2Id', 'name')
     .populate('nominee3Id', 'name');
-  console.log(userId);
-  console.log(generalClaims);
-  console.log(lifeClaims);
-  const formattedLifeClaims = lifeClaims.map(lifeClaims => ({
-    _id: lifeClaims._id,
-    clientId: lifeClaims.clientId.name,
-    policyNumber: lifeClaims.policyNumber,
-    policyName: lifeClaims.policyName,
-    companyName: lifeClaims.companyName,
-    deathClaimDate: lifeClaims.deathClaimDate.toLocaleDateString('en-GB'),
-    deathclaim: lifeClaims.deathClaim,
-    __v: lifeClaims.__v
-  }));
 
-  const formattedGeneralClaims = generalClaims.map(generalClaims => ({
-    _id: generalClaims._id,
-    clientId: generalClaims.clientId,
-    claimId: generalClaims.claimId.name,
-    policyNumber: generalClaims.policyId,
-    policyName: generalClaims.policyName,
-    companyName: generalClaims.companyName,
-    claim: generalClaims.claim,
-    approvalClaim: generalClaims.approvalClaim,
-    requestDate: generalClaims.requestDate.toLocaleDateString('en-GB'),
-    approvalDate: generalClaims.approvalDate.toLocaleDateString('en-GB'),
-    type: generalClaims.type,
-    vehicleNo: generalClaims.vehicleNo,
-    __v: generalClaims.__v
-  }));
+  // Calculate totals for summary metrics
+  let totalRequestedAmount = 0;
+  let totalApprovedAmount = 0;
+  let totalDeathClaims = 0;
 
+  const formattedLifeClaims = lifeClaims.map(claim => {
+    totalDeathClaims += claim.deathClaim || 0;
+    return {
+      _id: claim._id,
+      clientId: claim.clientId.name,
+      policyNumber: claim.policyNumber,
+      policyName: claim.policyName,
+      companyName: claim.companyName,
+      deathClaimDate:
+        claim.deathClaimDate?.toLocaleDateString('en-GB') || 'N/A',
+      deathclaim: claim.deathClaim,
+      claimSettledPercentage: '100%', // Death claims are typically fully settled
+      __v: claim.__v
+    };
+  });
+
+  const formattedGeneralClaims = generalClaims.map(claim => {
+    const requestedAmount = parseFloat(claim.claim) || 0;
+    const approvedAmount = parseFloat(claim.approvalClaim) || 0;
+    const settledPercentage =
+      requestedAmount > 0
+        ? `${((approvedAmount / requestedAmount) * 100).toFixed(2)}%`
+        : '0%';
+
+    totalRequestedAmount += requestedAmount;
+    totalApprovedAmount += approvedAmount;
+
+    return {
+      _id: claim._id,
+      clientId: claim.clientId,
+      claimId: claim.claimId.name,
+      policyNumber: claim.policyId,
+      policyName: claim.policyName,
+      companyName: claim.companyName,
+      claim: requestedAmount,
+      approvalClaim: approvedAmount,
+      requestDate: claim.requestDate?.toLocaleDateString('en-GB') || 'N/A',
+      approvalDate: claim.approvalDate?.toLocaleDateString('en-GB') || 'N/A',
+      type: claim.type,
+      vehicleNo: claim.vehicleNo,
+      claimSettledPercentage: settledPercentage,
+      __v: claim.__v
+    };
+  });
+
+  // Merge policies
   const mergedPolicies = [
     ...formattedLifeClaims.map(policy => ({
       ...policy,
-      claimId: 'N/A', // Not available in Life
+      claimId: 'N/A',
       approvalClaim: 'N/A',
       requestDate: 'N/A',
       approvalDate: 'N/A',
       type: 'N/A',
       vehicleNo: 'N/A',
-      policyType: 'Life' // New field to indicate policy type
+      policyType: 'Life'
     })),
     ...formattedGeneralClaims.map(policy => ({
       ...policy,
       deathClaimDate: 'N/A',
       deathclaim: 'N/A',
-      policyType: 'General' // New field to indicate policy type
+      policyType: 'General'
     }))
   ];
-  // console.log(lifePolicies[0].clientId);
-  // console.log(lifePolicies[0].clientId.name);
-  // console.log(lifePolicies);
-  // console.log(formattedLifePolicies);
-  // console.log(mergedPolicies);
 
+  // Prepare fields for table
   const lifeInsuranceFields = [
     { label: 'Policy Number', value: 'policyNumber' },
     { label: 'Policy Name', value: 'policyName' },
@@ -144,73 +163,95 @@ exports.getClaimsByClient = CatchAsync(async (req, res) => {
     { label: 'Type', value: 'type' },
     { label: 'Claim Id', value: 'claimId' },
     { label: 'Request Date', value: 'requestDate' },
-    { label: 'Request Claim', value: 'claim' },
+    { label: 'Request Amount', value: 'claim' },
     { label: 'Approval Date', value: 'approvalDate' },
-    { label: 'Approval Claim', value: 'approvalClaim' },
+    { label: 'Approved Amount', value: 'approvalClaim' },
+    { label: '% Settled', value: 'claimSettledPercentage' },
     { label: 'Vehicle No', value: 'vehicleNo' },
     { label: 'Death Claim Date', value: 'deathClaimDate' },
-    { label: 'Death claim', value: 'deathclaim' }
+    { label: 'Death Claim Amount', value: 'deathclaim' }
   ];
 
-  // Generate the report based on the requested format
+  // Prepare extras for summary
+  const extras = {
+    asOnDate: new Date().toLocaleDateString('en-IN'),
+    investmentSummary: {
+      investor: mergedPolicies[0]?.clientId || 'Client',
+      totalRequestedAmount: totalRequestedAmount.toFixed(2),
+      totalApprovedAmount: totalApprovedAmount.toFixed(2),
+      totalDeathClaims: totalDeathClaims.toFixed(2),
+      currency: ''
+    },
+    summaryMetrics: {
+      claim: totalRequestedAmount.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }),
+      approvalClaim: totalApprovedAmount.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }),
+      deathclaim: totalDeathClaims.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }),
+      overallSettlementPercentage:
+        totalRequestedAmount > 0
+          ? `${(
+              ((totalApprovedAmount + totalDeathClaims) /
+                (totalRequestedAmount + totalDeathClaims)) *
+              100
+            ).toFixed(2)}%`
+          : '0%'
+    }
+  };
+
+  // Generate report based on format
   if (req.format === 'pdf') {
     const pdfPath = path.join(
       __dirname,
-      `${mergedPolicies[0].clientId}_Claims_Report.pdf`
+      `${mergedPolicies[0]?.clientId || 'Client'}_Claims_Report.pdf`
     );
-    if (req.body.email) {
-      generatePDF(
-        mergedPolicies,
-        pdfPath,
-        res,
-        lifeInsuranceFields,
-        `Claims report of ${mergedPolicies[0].clientId}.pdf`,
-        'N/A',
-        req.body.email,
-        req.body.title,
-        req.body.description
-      );
-    } else {
-      generatePDF(
-        mergedPolicies,
-        pdfPath,
-        res,
-        lifeInsuranceFields,
-        `Claims report of ${mergedPolicies[0].clientId}.pdf`,
-        'N/A'
-      );
-    }
+    generatePDF(
+      mergedPolicies,
+      pdfPath,
+      res,
+      lifeInsuranceFields,
+      `Claims report of ${mergedPolicies[0]?.clientId || 'Client'}.pdf`,
+      'N/A',
+      req.body.email,
+      req.body.title,
+      req.body.description,
+      extras
+    );
   } else if (req.format === 'excel') {
     const excelPath = path.join(
       __dirname,
-      `${mergedPolicies[0].clientId}_Claims_Report.xlsx`
+      `${mergedPolicies[0]?.clientId || 'Client'}_Claims_Report.xlsx`
     );
-    if (req.body.email) {
-      generateExcel(
-        mergedPolicies,
-        excelPath,
-        res,
-        lifeInsuranceFields,
-        `Claims report of ${mergedPolicies[0].clientId}.xlsx`,
-        'N/A',
-        req.body.email,
-        req.body.title,
-        req.body.description
-      );
-    } else {
-      generateExcel(
-        mergedPolicies,
-        excelPath,
-        res,
-        lifeInsuranceFields,
-        `Claims report of ${mergedPolicies[0].clientId}.xlsx`,
-        'N/A'
-      );
-    }
+    generateExcel(
+      mergedPolicies,
+      excelPath,
+      res,
+      lifeInsuranceFields,
+      `Claims report of ${mergedPolicies[0]?.clientId || 'Client'}.xlsx`,
+      'N/A',
+      req.body.email,
+      req.body.title,
+      req.body.description,
+      extras
+    );
   } else {
-    return res.status(400).json({
-      status: 'fail',
-      message: 'Invalid format. Specify "pdf" or "excel".'
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        reportTitle: `Claims report of ${mergedPolicies[0]?.clientId ||
+          'Client'}`,
+        generatedOn: extras.asOnDate,
+        claims: mergedPolicies,
+        summary: extras.investmentSummary,
+        metrics: extras.summaryMetrics
+      }
     });
   }
 });
@@ -256,34 +297,13 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
       return cagr;
     };
 
-    // ✅ XIRR for SIPs
-    const calculateSIPXIRR = (transactions, currentValue) => {
-      try {
-        const cashflows = transactions.map(txn => ({
-          amount: -txn.amount,
-          when: new Date(txn.date)
-        }));
-
-        // Add final value as inflow on today's date
-        cashflows.push({
-          amount: currentValue,
-          when: new Date()
-        });
-
-        const rate = calculateXirr(cashflows);
-        return rate * 100; // convert to %
-      } catch (err) {
-        console.error('XIRR Calculation Error:', err.message);
-        return 0;
-      }
-    };
-
-    const formattedSchemes = await Promise.all(
+    // Calculate total portfolio value first
+    let totalPortfolioValue = 0;
+    const schemesWithValues = await Promise.all(
       schemes.map(async scheme => {
         const navRes = await fetch(
           `https://api.mfapi.in/mf/${scheme.AMFI}/latest`,
           {
-            // Override headers to remove Authorization for this request
             headers: {
               Authorization: undefined
             }
@@ -314,52 +334,73 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
 
         const totalUnits = Units - redeemedUnits;
         const currentValue = currNAV * totalUnits || 0;
-        const growth = currentValue - totalInvested;
-        const growthPercentage =
-          totalInvested > 0 ? (growth / totalInvested) * 100 : 0;
-
-        const startDate =
-          scheme.investmentType === 'lumpsum'
-            ? scheme.lumpsumDate
-            : scheme.sipStartDate;
-
-        const cagr =
-          scheme.investmentType === 'sip'
-            ? calculateSIPXIRR(scheme.sipTransactions, currentValue)
-            : calculateCAGR(totalInvested, currentValue, startDate);
+        totalPortfolioValue += currentValue;
 
         return {
-          _id: scheme._id,
-          investmentType: scheme.investmentType,
-          schemeName: scheme.schemeName.split(' - ')[0],
-          fundHouse: scheme.fundHouse,
-          AMFI: scheme.AMFI,
-          holderName: scheme.holderId?.name || 'N/A',
-          holderEmail: scheme.holderId?.email || 'N/A',
-          nominee1: scheme.nominee1Id
-            ? `${scheme.nominee1Id.name} (${scheme.nominee1Id.relation ||
-                'N/A'})`
-            : 'N/A',
-          nominee2: scheme.nominee2Id
-            ? `${scheme.nominee2Id.name} (${scheme.nominee2Id.relation ||
-                'N/A'})`
-            : 'N/A',
-          nominee3: scheme.nominee3Id
-            ? `${scheme.nominee3Id.name} (${scheme.nominee3Id.relation ||
-                'N/A'})`
-            : 'N/A',
-          startDate: new Date(startDate).toLocaleDateString('en-IN'),
-          totalInvested: totalInvested.toFixed(1),
-          currentValue: currentValue.toFixed(1),
-          growth: growth.toFixed(1),
-          growthPercentage: growthPercentage.toFixed(1),
-          cagr: cagr.toFixed(2),
-          totalUnits: totalUnits.toFixed(1),
-          lastUpdated: new Date(scheme.lastUpdated).toLocaleDateString('en-IN'),
-          status: scheme.investmentType === 'sip' ? scheme.sipStatus : 'active',
-          investmentDuration: calculateInvestmentDuration(startDate)
+          scheme,
+          totalInvested,
+          totalUnits,
+          currentValue
         };
       })
+    );
+
+    // Now calculate percentage holding and other metrics
+    const formattedSchemes = await Promise.all(
+      schemesWithValues.map(
+        async ({ scheme, totalInvested, totalUnits, currentValue }) => {
+          const growth = currentValue - totalInvested;
+          const growthPercentage =
+            totalInvested > 0 ? (growth / totalInvested) * 100 : 0;
+          const holdingPercentage =
+            totalPortfolioValue > 0
+              ? (currentValue / totalPortfolioValue) * 100
+              : 0;
+
+          const startDate =
+            scheme.investmentType === 'lumpsum'
+              ? scheme.lumpsumDate
+              : scheme.sipStartDate;
+
+          const cagr = calculateCAGR(totalInvested, currentValue, startDate);
+
+          return {
+            _id: scheme._id,
+            investmentType: scheme.investmentType,
+            schemeName: scheme.schemeName.split(' - ')[0],
+            fundHouse: scheme.fundHouse,
+            AMFI: scheme.AMFI,
+            holderName: scheme.holderId?.name || 'N/A',
+            holderEmail: scheme.holderId?.email || 'N/A',
+            nominee1: scheme.nominee1Id
+              ? `${scheme.nominee1Id.name} (${scheme.nominee1Id.relation ||
+                  'N/A'})`
+              : 'N/A',
+            nominee2: scheme.nominee2Id
+              ? `${scheme.nominee2Id.name} (${scheme.nominee2Id.relation ||
+                  'N/A'})`
+              : 'N/A',
+            nominee3: scheme.nominee3Id
+              ? `${scheme.nominee3Id.name} (${scheme.nominee3Id.relation ||
+                  'N/A'})`
+              : 'N/A',
+            startDate: new Date(startDate).toLocaleDateString('en-IN'),
+            totalInvested: totalInvested.toFixed(1),
+            currentValue: currentValue.toFixed(1),
+            growth: growth.toFixed(1),
+            growthPercentage: growthPercentage.toFixed(1),
+            cagr: cagr.toFixed(2),
+            totalUnits: totalUnits.toFixed(1),
+            holdingPercentage: holdingPercentage.toFixed(2),
+            lastUpdated: new Date(scheme.lastUpdated).toLocaleDateString(
+              'en-IN'
+            ),
+            status:
+              scheme.investmentType === 'sip' ? scheme.sipStatus : 'active',
+            investmentDuration: calculateInvestmentDuration(startDate)
+          };
+        }
+      )
     );
 
     function calculateInvestmentDuration(startDate) {
@@ -376,57 +417,81 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
       return `${years} years ${remainingMonths} months`;
     }
 
-    const mutualFundFields = [
-      { label: 'Scheme Name', value: 'schemeName' },
-      // { label: 'Fund House', value: 'fundHouse' },
-      { label: 'Investment Type', value: 'investmentType' },
-      { label: 'Status', value: 'status' },
-      { label: 'AMFI Code', value: 'AMFI' },
-      { label: 'Start Date', value: 'startDate' },
-      { label: 'Duration', value: 'investmentDuration' },
-      { label: 'Total Invested', value: 'totalInvested', format: 'currency' },
-      { label: 'Current Value', value: 'currentValue', format: 'currency' },
-      { label: 'Growth', value: 'growth', format: 'currency' },
-      {
-        label: 'Growth (in %)',
-        value: 'growthPercentage',
-        format: 'percentage'
+    // Calculate metrics for the extras object
+    const totalInvested = formattedSchemes.reduce(
+      (sum, scheme) => sum + parseFloat(scheme.totalInvested),
+      0
+    );
+    const totalCurrentValue = formattedSchemes.reduce(
+      (sum, scheme) => sum + parseFloat(scheme.currentValue),
+      0
+    );
+    const totalGrowth = totalCurrentValue - totalInvested;
+    const totalGrowthPercentage =
+      totalInvested > 0 ? (totalGrowth / totalInvested) * 100 : 0;
+
+    // Calculate weighted average CAGR
+    let totalWeightedCAGR = 0;
+    formattedSchemes.forEach(scheme => {
+      const investment = parseFloat(scheme.totalInvested);
+      totalWeightedCAGR += investment * parseFloat(scheme.cagr);
+    });
+    const weightedAvgCAGR =
+      totalInvested > 0 ? totalWeightedCAGR / totalInvested : 0;
+
+    // Prepare the extras object for PDF generation
+    const extras = {
+      asOnDate: new Date().toLocaleDateString('en-IN'),
+      investmentSummary: {
+        currency: '',
+        investor: formattedSchemes[0]?.holderName || 'Client',
+        investmentAmount: totalInvested.toLocaleString('en-IN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }),
+        currentValue: totalCurrentValue.toLocaleString('en-IN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }),
+        unrealisedGainLoss: totalGrowth.toLocaleString('en-IN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })
       },
-      { label: 'XIRR', value: 'cagr', format: 'percentage' },
-      { label: 'Total Units', value: 'totalUnits' }
-    ];
+      summaryMetrics: {
+        totalUnits: formattedSchemes
+          .reduce((sum, scheme) => sum + parseFloat(scheme.totalUnits || 0), 0)
+          .toFixed(2),
 
-    const portfolioSummary = {
-      totalInvested: formattedSchemes
-        .reduce((sum, scheme) => sum + parseFloat(scheme.totalInvested), 0)
-        .toFixed(2),
-      currentValue: formattedSchemes
-        .reduce((sum, scheme) => sum + parseFloat(scheme.currentValue), 0)
-        .toFixed(2),
-      totalGrowth: formattedSchemes
-        .reduce((sum, scheme) => sum + parseFloat(scheme.growth), 0)
-        .toFixed(2),
-      weightedCAGR: calculateWeightedCAGR(formattedSchemes)
+        totalInvested: totalInvested.toFixed(2),
+        currentValue: totalCurrentValue.toFixed(2)
+      },
+      weightedAverage: weightedAvgCAGR.toFixed(2),
+      grandTotal: {
+        weightedAvgAnnualReturn: weightedAvgCAGR.toFixed(2),
+        weightedAvgAbsReturn: totalGrowthPercentage.toFixed(2),
+        unrealisedGainLoss: totalGrowth.toFixed(2),
+        currentValue: totalCurrentValue.toFixed(2),
+        currency: ''
+      }
     };
-
-    function calculateWeightedCAGR(schemes) {
-      let totalWeightedCAGR = 0;
-      let totalInvestment = 0;
-
-      schemes.forEach(scheme => {
-        const investment = parseFloat(scheme.totalInvested);
-        totalWeightedCAGR += investment * parseFloat(scheme.cagr);
-        totalInvestment += investment;
-      });
-
-      return totalInvestment > 0
-        ? (totalWeightedCAGR / totalInvestment).toFixed(2)
-        : '0.00';
-    }
 
     const clientName = formattedSchemes[0]?.holderName || 'Client';
     const reportTitle = `Mutual Funds Portfolio Report - ${clientName}`;
-    const reportDate = new Date().toLocaleDateString('en-IN');
+
+    const fields = [
+      { label: 'Scheme Name', value: 'schemeName' },
+      { label: 'Start Date', value: 'startDate' },
+      { label: 'Duration', value: 'investmentDuration' },
+      { label: 'Investment Type', value: 'investmentType' },
+      { label: 'Units', value: 'totalUnits' },
+      { label: 'Total Invested', value: 'totalInvested' },
+      { label: 'Current Value', value: 'currentValue' },
+      { label: 'Gain/Loss', value: 'growth' },
+      { label: 'Gain/Loss (%)', value: 'growthPercentage' },
+      { label: 'XIRR/CAGR (%)', value: 'cagr' },
+      { label: '% Holding', value: 'holdingPercentage' }
+    ];
 
     if (req.format === 'pdf') {
       const pdfPath = path.join(__dirname, 'mutual_funds_report.pdf');
@@ -435,36 +500,40 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
           formattedSchemes,
           pdfPath,
           res,
-          mutualFundFields,
+          fields,
           reportTitle + '.pdf',
-          // reportDate,
           'N/A',
           req.body.email,
           req.body.title,
-          req.body.description
+          req.body.description,
+          extras
         );
       } else {
         await generatePDF(
           formattedSchemes,
           pdfPath,
           res,
-          mutualFundFields,
+          fields,
           reportTitle + '.pdf',
-          // reportDate,
-          'N/A'
+          'N/A',
+          null,
+          null,
+          null,
+          extras
         );
       }
-    } else if (req.format === 'excel') {
-      const excelPath = path.join(__dirname, 'mutual_funds_report.xlsx');
+      console.log(extras);
+    } else if (format === 'excel') {
+      const excelPath = path.join(__dirname, 'transactions_report.xlsx');
       if (req.body.email) {
         await generateExcel(
           formattedSchemes,
           excelPath,
           res,
-          mutualFundFields,
+          fields,
           reportTitle + '.xlsx',
           // reportDate,
-          'N/A',
+          clientName,
           req.body.email,
           req.body.title,
           req.body.description
@@ -474,10 +543,10 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
           formattedSchemes,
           excelPath,
           res,
-          mutualFundFields,
+          fields,
           reportTitle + '.xlsx',
           // reportDate,
-          'N/A'
+          clientName
         );
       }
     } else {
@@ -485,8 +554,13 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
         status: 'success',
         data: {
           clientName,
-          reportDate,
-          portfolioSummary,
+          reportDate: extras.asOnDate,
+          portfolioSummary: {
+            totalInvested: extras.investmentSummary.investmentAmount,
+            currentValue: extras.investmentSummary.currentValue,
+            unrealisedGainLoss: extras.investmentSummary.unrealisedGainLoss,
+            weightedAverageCAGR: extras.weightedAverage
+          },
           schemes: formattedSchemes
         }
       });
@@ -505,6 +579,7 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
   try {
     const fetch = (...args) =>
       import('node-fetch').then(({ default: fetch }) => fetch(...args));
+    const { calculateXirr } = require('./../utils/xirr');
 
     const { name: holderId, schemeId, format, name_label } = req.body;
 
@@ -529,7 +604,7 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
 
     const targetAMFI = targetScheme.AMFI;
 
-    // ✅ Fetch all schemes with the same AMFI and holder
+    // Fetch all schemes with the same AMFI and holder
     const schemes = await Mutual.find({ AMFI: targetAMFI, holderId })
       .populate('holderId', 'name email')
       .lean();
@@ -541,7 +616,7 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
       });
     }
 
-    // ✅ Get NAV and date
+    // Get NAV and date
     const navRes = await fetch(`https://api.mfapi.in/mf/${targetAMFI}/latest`);
     if (!navRes.ok)
       throw new Error(`Failed to fetch NAV: ${navRes.statusText}`);
@@ -551,13 +626,19 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
     const last_date = navData.data[0]?.date || 'N/A';
     const now = new Date();
 
+    // Calculate totals
+    let totalInvested = 0;
+    let totalCurrentValue = 0;
+    let totalUnits = 0;
+    let xirrTransactions = [];
+
     const calculateCAGR = (initialAmount, finalAmount, startDate) => {
       const years = (now - new Date(startDate)) / (1000 * 60 * 60 * 24 * 365);
       if (initialAmount <= 0 || years <= 0) return 0;
       return (Math.pow(finalAmount / initialAmount, 1 / years) - 1) * 100;
     };
 
-    // ✅ Aggregate transactions from all schemes
+    // Aggregate transactions from all schemes
     const transactions = [];
 
     for (const scheme of schemes) {
@@ -572,6 +653,11 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
             2
           );
           const cagr = calculateCAGR(amount, currentAmount, date);
+
+          totalInvested += amount;
+          totalCurrentValue += currentAmount;
+          totalUnits += units;
+          xirrTransactions.push({ amount: -amount, date });
 
           transactions.push({
             date: dayjs(date).format('YYYY-MM-DD'),
@@ -595,6 +681,11 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
         );
         const cagr = calculateCAGR(amount, currentAmount, date);
 
+        totalInvested += amount;
+        totalCurrentValue += currentAmount;
+        totalUnits += units;
+        xirrTransactions.push({ amount: -amount, date });
+
         transactions.push({
           date: dayjs(date).format('YYYY-MM-DD'),
           amountInvested: amount.toFixed(2),
@@ -607,6 +698,50 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
         });
       }
     }
+
+    // Add current value as final transaction for XIRR calculation
+    xirrTransactions = [];
+
+    for (const scheme of schemes) {
+      if (scheme.investmentType === 'sip') {
+        for (const txn of scheme.sipTransactions || []) {
+          xirrTransactions.push({
+            amount: -txn.amount, // Negative for investments
+            when: new Date(txn.date)
+          });
+        }
+      } else if (scheme.investmentType === 'lumpsum') {
+        xirrTransactions.push({
+          amount: -scheme.lumpsumAmount, // Negative for investments
+          when: new Date(scheme.lumpsumDate)
+        });
+      }
+    }
+
+    // Add current value as positive cash flow (redemption)
+    xirrTransactions.push({
+      amount: totalCurrentValue, // Positive for final value
+      when: new Date() // Current date
+    });
+
+    // 2. Calculate XIRR with proper error handling
+    let xirr = 0;
+    try {
+      const rawXirr = calculateXirr(xirrTransactions);
+      // Handle NaN cases
+      if (isNaN(rawXirr)) {
+        console.warn('XIRR calculation returned NaN, using 0');
+        xirr = 0;
+      } else {
+        xirr = rawXirr * 100; // Convert to percentage
+      }
+    } catch (error) {
+      console.error('XIRR calculation failed:', error);
+      xirr = 0; // Fallback value
+    }
+    // console.log(xirrTransactions);
+    // console.log('xirr', xirr);
+    const totalGrowth = totalCurrentValue - totalInvested;
 
     transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -625,6 +760,43 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
     const reportDate = new Date().toLocaleDateString('en-IN');
     const clientName = schemes[0]?.holderId?.name || 'Client';
 
+    // Complete extras object
+    const extras = {
+      asOnDate: reportDate,
+      investmentSummary: {
+        currency: '',
+        investor: clientName,
+        investmentAmount: totalInvested.toLocaleString('en-IN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }),
+        currentValue: totalCurrentValue.toLocaleString('en-IN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }),
+        unrealisedGainLoss: totalGrowth.toLocaleString('en-IN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }),
+        xirr: xirr.toFixed(2)
+      },
+      summaryMetrics: {
+        units: totalUnits.toFixed(2),
+        amountInvested: totalInvested.toFixed(2),
+        currentAmount: totalCurrentValue.toFixed(2)
+      },
+      grandTotal: {
+        weightedAvgAnnualReturn: xirr.toFixed(2),
+        weightedAvgAbsReturn: (
+          (totalCurrentValue / totalInvested - 1) *
+          100
+        ).toFixed(2),
+        unrealisedGainLoss: totalGrowth.toFixed(2),
+        currentValue: totalCurrentValue.toFixed(2),
+        currency: ''
+      }
+    };
+
     if (format === 'pdf') {
       const pdfPath = path.join(__dirname, 'transactions_report.pdf');
       if (req.body.email) {
@@ -634,11 +806,11 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
           res,
           transactionFields,
           reportTitle + '.pdf',
-          // reportDate,
-          clientName,
+          'N/A', // space parameter
           req.body.email,
           req.body.title,
-          req.body.description
+          req.body.description,
+          extras // passing the complete extras object
         );
       } else {
         await generatePDF(
@@ -647,8 +819,11 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
           res,
           transactionFields,
           reportTitle + '.pdf',
-          // reportDate,
-          clientName
+          'N/A', // space parameter
+          null, // email
+          null, // subject
+          null, // description
+          extras // passing the complete extras object
         );
       }
     } else if (format === 'excel') {
@@ -660,11 +835,11 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
           res,
           transactionFields,
           reportTitle + '.xlsx',
-          // reportDate,
-          clientName,
+          'N/A', // space parameter
           req.body.email,
           req.body.title,
-          req.body.description
+          req.body.description,
+          extras // passing the complete extras object
         );
       } else {
         await generateExcel(
@@ -673,8 +848,11 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
           res,
           transactionFields,
           reportTitle + '.xlsx',
-          // reportDate,
-          clientName
+          'N/A', // space parameter
+          null, // email
+          null, // subject
+          null, // description
+          extras // passing the complete extras object
         );
       }
     } else {
@@ -686,7 +864,8 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
           amfi: targetAMFI,
           schemeName: targetScheme.schemeName,
           fundHouse: targetScheme.fundHouse,
-          transactions
+          transactions,
+          extras // including extras in JSON response
         }
       });
     }
@@ -701,14 +880,12 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
 });
 
 exports.getPolicyByClient = CatchAsync(async (req, res) => {
-  // Step 3: Find policies using the user ID and populate client and nominees
   const name = req.name;
-
   const policies = await Life.find({ clientId: req.userId })
-    .populate('clientId', 'name') // Populate client name
-    .populate('nominee1ID', 'name') // Populate nominee 1 name
-    .populate('nominee2ID', 'name') // Populate nominee 2 name
-    .populate('nominee3ID', 'name'); // Populate nominee 3 name
+    .populate('clientId', 'name')
+    .populate('nominee1ID', 'name')
+    .populate('nominee2ID', 'name')
+    .populate('nominee3ID', 'name');
 
   if (!policies.length) {
     return res.status(404).json({
@@ -717,22 +894,103 @@ exports.getPolicyByClient = CatchAsync(async (req, res) => {
     });
   }
 
-  console.log(policies);
-  const formattedPolicies = policies.map(policies => ({
-    _id: policies._id,
-    policyNumber: policies.policyNumber,
-    policyName: policies.policyName,
-    companyName: policies.companyName,
-    holderName: policies.clientId?.name || null,
-    nominee1Name: policies.nominee1ID?.name || null,
-    nominee2Name: policies.nominee2ID?.name || null,
-    nominee3Name: policies.nominee3ID?.name || null,
-    startPremiumDate: policies.startPremiumDate.toLocaleDateString('en-GB'),
-    endPremiumDate: policies.endPremiumDate.toLocaleDateString('en-GB'),
-    maturityDate: policies.maturityDate.toLocaleDateString('en-GB'),
-    premium: policies.premium,
-    __v: policies.__v
-  }));
+  // Calculate totals for summary metrics
+  let totalPremiumPaid = 0;
+  let totalClaims = 0;
+
+  const formattedPolicies = policies.map(policy => {
+    // Calculate premium duration based on mode
+    const startDate = new Date(policy.startPremiumDate);
+    const endDate = new Date(policy.endPremiumDate);
+    let duration = 0;
+    let totalPremiumForPolicy = 0;
+
+    if (policy.mode === 'Annual' || policy.mode === 'Yearly') {
+      duration = endDate.getFullYear() - startDate.getFullYear();
+      totalPremiumForPolicy = policy.premium * duration;
+    } else if (policy.mode === 'Quarterly') {
+      const totalMonths =
+        (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+        (endDate.getMonth() - startDate.getMonth());
+      duration = Math.ceil(totalMonths / 3); // 3 months per quarter
+      totalPremiumForPolicy = policy.premium * duration;
+    } else if (policy.mode === 'Half-Yearly') {
+      const totalMonths =
+        (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+        (endDate.getMonth() - startDate.getMonth());
+      duration = Math.ceil(totalMonths / 6); // 6 months per half-year
+      totalPremiumForPolicy = policy.premium * duration;
+    } else if (policy.mode === 'Monthly') {
+      const totalMonths =
+        (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+        (endDate.getMonth() - startDate.getMonth());
+      duration = Math.ceil(totalMonths);
+      totalPremiumForPolicy = policy.premium * duration;
+    }
+
+    // Calculate total claims
+    const policyClaims =
+      policy.claim?.reduce((sum, c) => sum + (c.claim || 0), 0) || 0;
+
+    // Calculate growth percentage
+    const growthPercentage =
+      totalPremiumForPolicy > 0
+        ? (
+            ((policyClaims - totalPremiumForPolicy) / totalPremiumForPolicy) *
+            100
+          ).toFixed(2)
+        : '0.00';
+
+    // Update totals
+    totalPremiumPaid += totalPremiumForPolicy;
+    totalClaims += policyClaims;
+
+    return {
+      _id: policy._id,
+      policyNumber: policy.policyNumber,
+      policyName: policy.policyName,
+      companyName: policy.companyName,
+      holderName: policy.clientId?.name || null,
+      nominee1Name: policy.nominee1ID?.name || null,
+      startPremiumDate: startDate.toLocaleDateString('en-GB'),
+      endPremiumDate: endDate.toLocaleDateString('en-GB'),
+      maturityDate: policy.maturityDate?.toLocaleDateString('en-GB') || 'N/A',
+      premium: policy.premium,
+      premiumMode: policy.mode || 'Annual',
+      totalPremiumPaid: totalPremiumForPolicy.toFixed(2),
+      totalClaims: policyClaims.toFixed(2),
+      growthPercentage: `${growthPercentage}%`,
+      __v: policy.__v
+    };
+  });
+
+  // Calculate overall growth percentage
+  const overallGrowthPercentage =
+    totalPremiumPaid > 0
+      ? (((totalClaims - totalPremiumPaid) / totalPremiumPaid) * 100).toFixed(2)
+      : '0.00';
+
+  // Prepare extras for summary
+  const extras = {
+    asOnDate: new Date().toLocaleDateString('en-IN'),
+    investmentSummary: {
+      investor: formattedPolicies[0]?.holderName || 'Client',
+      totalPremiumPaid: totalPremiumPaid.toFixed(2),
+      totalClaims: totalClaims.toFixed(2),
+      growthPercentage: `${overallGrowthPercentage}%`,
+      currency: '₹'
+    },
+    summaryMetrics: {
+      totalPremiumPaid: totalPremiumPaid.toLocaleString('en-IN', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }),
+      totalClaims: totalClaims.toLocaleString('en-IN', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      })
+    }
+  };
 
   const lifeInsuranceFields = [
     { label: 'Policy Number', value: 'policyNumber' },
@@ -740,82 +998,68 @@ exports.getPolicyByClient = CatchAsync(async (req, res) => {
     { label: 'Company Name', value: 'companyName' },
     { label: 'Start Date', value: 'startPremiumDate' },
     { label: 'End Date', value: 'endPremiumDate' },
-    { label: 'Premium', value: 'premium' },
+    { label: 'Premium Amount', value: 'premium' },
+    { label: 'Premium Mode', value: 'premiumMode' },
+    { label: 'Total Premium Paid', value: 'totalPremiumPaid' },
     { label: 'Maturity Date', value: 'maturityDate' },
-    { label: 'Nominee 1', value: 'nominee1Name' },
-    { label: 'Nominee 2', value: 'nominee2Name' },
-    { label: 'Nominee 3', value: 'nominee3Name' }
+    { label: 'Total Claim', value: 'totalClaims' },
+    { label: 'Growth %', value: 'growthPercentage' },
+    { label: 'Nominee 1', value: 'nominee1Name' }
   ];
-  // console.log(formattedPolicies);
-  // Step 4: Generate PDF or Excel
+
   if (req.format === 'pdf') {
-    // Create and send a PDF file
     const pdfPath = path.join(__dirname, `${name}_life_Ins_report.pdf`);
-    // console.log(pdfPath);
-    if (req.body.email) {
-      generatePDF(
-        formattedPolicies,
-        pdfPath,
-        res,
-        lifeInsuranceFields,
-        `Life Insurance report of ${formattedPolicies[0].holderName}.pdf`,
-        'N/A',
-        req.body.email,
-        req.body.title,
-        req.body.description
-      );
-    } else {
-      generatePDF(
-        formattedPolicies,
-        pdfPath,
-        res,
-        lifeInsuranceFields,
-        `Life Insurance report of ${formattedPolicies[0].holderName}.pdf`,
-        'N/A'
-      );
-    }
+    generatePDF(
+      formattedPolicies,
+      pdfPath,
+      res,
+      lifeInsuranceFields,
+      `Life Insurance report of ${formattedPolicies[0]?.holderName ||
+        'Client'}.pdf`,
+      'N/A',
+      req.body.email,
+      req.body.title,
+      req.body.description,
+      extras
+    );
   } else if (req.format === 'excel') {
-    // Create and send an Excel file
     const excelPath = path.join(__dirname, `${name}_life_Ins_report.xlsx`);
-    if (req.body.email) {
-      generateExcel(
-        formattedPolicies,
-        excelPath,
-        res,
-        lifeInsuranceFields,
-        `Life Insurance report of ${formattedPolicies[0].holderName}.xlsx`,
-        'N/A',
-        req.body.email,
-        req.body.title,
-        req.body.description
-      );
-    } else {
-      generateExcel(
-        formattedPolicies,
-        excelPath,
-        res,
-        lifeInsuranceFields,
-        `Life Insurance report of ${formattedPolicies[0].holderName}.xlsx`,
-        'N/A'
-      );
-    }
+    generateExcel(
+      formattedPolicies,
+      excelPath,
+      res,
+      lifeInsuranceFields,
+      `Life Insurance report of ${formattedPolicies[0]?.holderName ||
+        'Client'}.xlsx`,
+      'N/A',
+      req.body.email,
+      req.body.title,
+      req.body.description,
+      extras
+    );
   } else {
-    return res.status(400).json({
-      status: 'fail',
-      message: 'Invalid format. Specify "pdf" or "excel".'
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        reportTitle: `Life Insurance report of ${formattedPolicies[0]
+          ?.holderName || 'Client'}`,
+        generatedOn: extras.asOnDate,
+        policies: formattedPolicies,
+        summary: extras.investmentSummary,
+        metrics: extras.summaryMetrics
+      }
     });
   }
 });
 
 exports.getGeneralPolicyByClient = CatchAsync(async (req, res) => {
-  // Step 3: Find policies using the user ID and populate client and nominees
   const name = req.name;
 
   const policies = await General.find({ clientId: req.userId })
-    .populate('clientId', 'name') // Populate client name
-    .populate('nominee1ID', 'name') // Populate nominee 1 name
-    .populate('nominee2ID', 'name') // Populate nominee 2 name
-    .populate('nominee3ID', 'name'); // Populate nominee 3 name
+    .populate('clientId', 'name')
+    .populate('nominee1ID', 'name')
+    .populate('nominee2ID', 'name')
+    .populate('nominee3ID', 'name');
 
   if (!policies.length) {
     return res.status(404).json({
@@ -824,100 +1068,162 @@ exports.getGeneralPolicyByClient = CatchAsync(async (req, res) => {
     });
   }
 
-  console.log(policies);
-  const formattedPolicies = policies.map(policies => ({
-    _id: policies._id,
-    policyNumber: policies.policyNumber,
-    policyName: policies.policyName,
-    companyName: policies.companyName,
-    holderName: policies.clientId?.name || null,
-    nominee1Name: policies.nominee1ID?.name || null,
-    nominee2Name: policies.nominee2ID?.name || null,
-    nominee3Name: policies.nominee3ID?.name || null,
-    startPremiumDate: policies.startPremiumDate.toLocaleDateString('en-GB'),
-    type: policies.type,
-    __v: policies.__v
-  }));
+  // Calculate totals for summary metrics
+  let totalPremiumPaid = 0;
+  let totalRequestedClaims = 0;
+  let totalApprovedClaims = 0;
 
-  const lifeInsuranceFields = [
+  const formattedPolicies = policies.map(policy => {
+    // Calculate total premium from premium array
+    const policyPremium =
+      policy.premium?.reduce((sum, p) => sum + (p.premium1 || 0), 0) || 0;
+
+    // Calculate claim metrics
+    let policyRequestedClaims = 0;
+    let policyApprovedClaims = 0;
+
+    policy.claims?.forEach(claim => {
+      policyRequestedClaims += claim.claim || 0;
+      policyApprovedClaims += claim.approvalClaim || 0;
+    });
+
+    const approvalRate =
+      policyRequestedClaims > 0
+        ? ((policyApprovedClaims / policyRequestedClaims) * 100).toFixed(2)
+        : '0.00';
+
+    // Update totals
+    totalPremiumPaid += policyPremium;
+    totalRequestedClaims += policyRequestedClaims;
+    totalApprovedClaims += policyApprovedClaims;
+
+    return {
+      _id: policy._id,
+      policyNumber: policy.policyNumber,
+      policyName: policy.policyName,
+      companyName: policy.companyName,
+      holderName: policy.clientId?.name || null,
+      startPremiumDate:
+        policy.startPremiumDate?.toLocaleDateString('en-GB') || 'N/A',
+      type: policy.type,
+      vehicleID: policy.vehicleID || 'N/A',
+      totalPremium: policyPremium.toFixed(2),
+      totalRequestedClaims: policyRequestedClaims.toFixed(2),
+      totalApprovedClaims: policyApprovedClaims.toFixed(2),
+      approvalRate: `${approvalRate}%`,
+      __v: policy.__v
+    };
+  });
+
+  // Calculate overall metrics
+  const overallApprovalRate =
+    totalRequestedClaims > 0
+      ? ((totalApprovedClaims / totalRequestedClaims) * 100).toFixed(2)
+      : '0.00';
+
+  const growthPercentage =
+    totalPremiumPaid > 0
+      ? (
+          ((totalApprovedClaims - totalPremiumPaid) / totalPremiumPaid) *
+          100
+        ).toFixed(2)
+      : '0.00';
+
+  // Prepare extras for summary
+  const extras = {
+    asOnDate: new Date().toLocaleDateString('en-IN'),
+    investmentSummary: {
+      investor: formattedPolicies[0]?.holderName || 'Client',
+      totalPremiumPaid: totalPremiumPaid.toFixed(2),
+      totalRequestedClaims: totalRequestedClaims.toFixed(2),
+      totalApprovedClaims: totalApprovedClaims.toFixed(2),
+      approvalRate: `${overallApprovalRate}%`,
+      currency: '₹'
+    },
+    summaryMetrics: {
+      totalPremium: totalPremiumPaid.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }),
+      totalRequestedClaims: totalRequestedClaims.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }),
+      totalApprovedClaims: totalApprovedClaims.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }),
+      overallApprovalRate: `${overallApprovalRate}%`,
+      growthPercentage: `${growthPercentage}%`
+    }
+  };
+
+  const generalInsuranceFields = [
     { label: 'Policy Number', value: 'policyNumber' },
     { label: 'Policy Name', value: 'policyName' },
     { label: 'Company Name', value: 'companyName' },
     { label: 'Start Date', value: 'startPremiumDate' },
     { label: 'Type', value: 'type' },
-    { label: 'Nominee 1', value: 'nominee1Name' },
-    { label: 'Nominee 2', value: 'nominee2Name' },
-    { label: 'Nominee 3', value: 'nominee3Name' }
+    { label: 'Vehicle No', value: 'vehicleID' },
+    { label: 'Total Premium', value: 'totalPremium' },
+    { label: 'Requested Claims', value: 'totalRequestedClaims' },
+    { label: 'Approved Claims', value: 'totalApprovedClaims' },
+    { label: 'Approval Rate', value: 'approvalRate' }
   ];
-  // console.log(formattedPolicies);
-  // Step 4: Generate PDF or Excel
+
   if (req.format === 'pdf') {
-    // Create and send a PDF file
     const pdfPath = path.join(__dirname, `${name}_General_Ins_report.pdf`);
-    if (req.body.email) {
-      generatePDF(
-        formattedPolicies,
-        pdfPath,
-        res,
-        lifeInsuranceFields,
-        `General Insurance report of ${formattedPolicies[0].holderName}.pdf`,
-        'N/A',
-        req.body.email,
-        req.body.title,
-        req.body.description
-      );
-    } else {
-      generatePDF(
-        formattedPolicies,
-        pdfPath,
-        res,
-        lifeInsuranceFields,
-        `General Insurance report of ${formattedPolicies[0].holderName}.pdf`,
-        'N/A'
-      );
-    }
+    generatePDF(
+      formattedPolicies,
+      pdfPath,
+      res,
+      generalInsuranceFields,
+      `General Insurance report of ${formattedPolicies[0]?.holderName ||
+        'Client'}.pdf`,
+      'N/A',
+      req.body.email,
+      req.body.title,
+      req.body.description,
+      extras
+    );
   } else if (req.format === 'excel') {
-    // Create and send an Excel file
     const excelPath = path.join(__dirname, `${name}_General_Ins_report.xlsx`);
-    if (req.body.email) {
-      generateExcel(
-        formattedPolicies,
-        excelPath,
-        res,
-        lifeInsuranceFields,
-        `General Insurance report of ${formattedPolicies[0].holderName}.xlsx`,
-        'N/A',
-        req.body.email,
-        req.body.title,
-        req.body.description
-      );
-    } else {
-      generateExcel(
-        formattedPolicies,
-        excelPath,
-        res,
-        lifeInsuranceFields,
-        `General Insurance report of ${formattedPolicies[0].holderName}.xlsx`,
-        'N/A'
-      );
-    }
+    generateExcel(
+      formattedPolicies,
+      excelPath,
+      res,
+      generalInsuranceFields,
+      `General Insurance report of ${formattedPolicies[0]?.holderName ||
+        'Client'}.xlsx`,
+      'N/A',
+      req.body.email,
+      req.body.title,
+      req.body.description,
+      extras
+    );
   } else {
-    return res.status(400).json({
-      status: 'fail',
-      message: 'Invalid format. Specify "pdf" or "excel".'
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        reportTitle: `General Insurance report of ${formattedPolicies[0]
+          ?.holderName || 'Client'}`,
+        generatedOn: extras.asOnDate,
+        policies: formattedPolicies,
+        summary: extras.investmentSummary,
+        metrics: extras.summaryMetrics
+      }
     });
   }
 });
 
 exports.getDebtsByClient = CatchAsync(async (req, res) => {
-  // Step 3: Find policies using the user ID and populate client and nominees
   const name = req.name;
 
   const policies = await Debt.find({ holderId: req.userId })
-    .populate('holderId', 'name') // Populate client name
-    .populate('nominee1Id', 'name') // Populate nominee 1 name
-    .populate('nominee2Id', 'name') // Populate nominee 2 name
-    .populate('nominee3Id', 'name'); // Populate nominee 3 name
+    .populate('holderId', 'name')
+    .populate('nominee1Id', 'name')
+    .populate('nominee2Id', 'name')
+    .populate('nominee3Id', 'name');
 
   if (!policies.length) {
     return res.status(404).json({
@@ -926,50 +1232,121 @@ exports.getDebtsByClient = CatchAsync(async (req, res) => {
     });
   }
 
-  // console.log(policies);
-  const formattedPolicies = policies.map(policies => {
-    const startDate = new Date(policies.startDate);
-    const maturityDate = new Date(policies.MaturityDate);
-    const years = (maturityDate - startDate) / (1000 * 60 * 60 * 24 * 365); // Convert milliseconds to years
-    const rate = policies.intrestRate / 100; // Convert percentage to decimal
-    const amountReceived = policies.amount * Math.pow(1 + rate, years); // Compound Interest Formula
+  // Calculate totals and growth metrics
+  let totalInvested = 0;
+  let totalMaturity = 0;
+  let totalGrowthAmount = 0;
+  let totalInterestRate = 0;
+
+  const formattedPolicies = policies.map(policy => {
+    const startDate = new Date(policy.startDate);
+    const maturityDate = new Date(policy.MaturityDate);
+    const years = (maturityDate - startDate) / (1000 * 60 * 60 * 24 * 365);
+    const rate = policy.intrestRate / 100;
+    const amountReceived = policy.amount * Math.pow(1 + rate, years);
+    const growthAmount = amountReceived - policy.amount;
+    const growthPercentage = (growthAmount / policy.amount) * 100;
+
+    // Accumulate totals
+    totalInvested += policy.amount;
+    totalMaturity += amountReceived;
+    totalGrowthAmount += growthAmount;
+    totalInterestRate += policy.intrestRate;
 
     return {
-      _id: policies._id,
-      AccountNumber: policies.AccountNumber,
-      bankDetails: policies.bankDetails,
+      _id: policy._id,
+      AccountNumber: policy.AccountNumber,
+      bankDetails: policy.bankDetails,
       startDate: startDate.toLocaleDateString('en-GB'),
-      amount: policies.amount,
-      intrestRate: policies.intrestRate,
+      amount: policy.amount,
+      intrestRate: policy.intrestRate,
       MaturityDate: maturityDate.toLocaleDateString('en-GB'),
-      amountReceived: amountReceived.toFixed(2), // Rounded to 2 decimal places
-      holderName: policies.holderId?.name || null,
-      nominee1Name: policies.nominee1Id?.name || null,
-      nominee2Name: policies.nominee2Id?.name || null,
-      nominee3Name: policies.nominee3Id?.name || null,
-      type: policies.type,
-      __v: policies.__v
+      amountReceived: amountReceived.toFixed(2),
+      growthAmount: growthAmount.toFixed(2),
+      growthPercentage: growthPercentage.toFixed(2),
+      holderName: policy.holderId?.name || null,
+      nominee1Name: policy.nominee1Id?.name || null,
+      type: policy.type,
+      __v: policy.__v
     };
   });
+
+  // Calculate averages
+  const avgInterestRate = (totalInterestRate / policies.length).toFixed(2);
+  const avgGrowthPercentage = (
+    ((totalMaturity - totalInvested) / totalInvested) *
+    100
+  ).toFixed(2);
 
   const lifeInsuranceFields = [
     { label: 'Account Number', value: 'AccountNumber' },
     { label: 'Bank Details', value: 'bankDetails' },
     { label: 'Starting Date', value: 'startDate' },
-    { label: 'Start Date', value: 'startPremiumDate' },
     { label: 'Amount Invested', value: 'amount' },
-    { label: 'Intrest Rate', value: 'intrestRate' },
+    { label: 'Interest Rate (%)', value: 'intrestRate' },
     { label: 'Maturity Date', value: 'MaturityDate' },
     { label: 'Maturity Amount', value: 'amountReceived' },
-    { label: 'Nominee 1', value: 'nominee1Name' },
-    { label: 'Nominee 2', value: 'nominee2Name' },
-    { label: 'Nominee 3', value: 'nominee3Name' }
+    { label: 'Growth Amount', value: 'growthAmount' },
+    { label: 'Growth (%)', value: 'growthPercentage' },
+    { label: 'Nominee 1', value: 'nominee1Name' }
   ];
-  console.log(formattedPolicies);
-  // Step 4: Generate PDF or Excel
+
+  // Prepare extras for PDF/Excel generation
+  let weightedInterestSum = 0;
+  let weightedGrowthSum = 0;
+
+  policies.forEach(policy => {
+    weightedInterestSum += policy.amount * policy.intrestRate;
+    const maturityAmount =
+      policy.amount *
+      Math.pow(
+        1 + policy.intrestRate / 100,
+        (new Date(policy.MaturityDate) - new Date(policy.startDate)) /
+          (1000 * 60 * 60 * 24 * 365)
+      );
+    weightedGrowthSum +=
+      policy.amount *
+      (((maturityAmount - policy.amount) / policy.amount) * 100);
+  });
+
+  const weightedAvgInterestRate = (weightedInterestSum / totalInvested).toFixed(
+    2
+  );
+  const weightedAvgGrowthPercentage = (
+    weightedGrowthSum / totalInvested
+  ).toFixed(2);
+
+  // Then update the extras object to use these weighted averages:
+  const extras = {
+    asOnDate: new Date().toLocaleDateString('en-IN'),
+    investmentSummary: {
+      investor: formattedPolicies[0]?.holderName || 'Client',
+      totalInvested: totalInvested.toFixed(2),
+      totalMaturity: totalMaturity.toFixed(2),
+      totalGrowth: totalGrowthAmount.toFixed(2),
+      weightedAvgInterestRate, // Changed from avgInterestRate
+      weightedAvgGrowthPercentage // Changed from avgGrowthPercentage
+    },
+    summaryMetrics: {
+      amount: totalInvested.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }),
+      amountReceived: totalMaturity.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }),
+      growthAmount: totalGrowthAmount.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }),
+      weightedAvgInterestRate: `${weightedAvgInterestRate}%`, // Changed
+      weightedAvgGrowthPercentage: `${weightedAvgGrowthPercentage}%` // Changed
+    }
+  };
+
   if (req.format === 'pdf') {
-    // Create and send a PDF file
-    const pdfPath = path.join(__dirname, `${name}_General_Ins_report.pdf`);
+    const pdfPath = path.join(__dirname, `${name}_Debt_report.pdf`);
     if (req.body.email) {
       generatePDF(
         formattedPolicies,
@@ -980,7 +1357,8 @@ exports.getDebtsByClient = CatchAsync(async (req, res) => {
         'N/A',
         req.body.email,
         req.body.title,
-        req.body.description
+        req.body.description,
+        extras
       );
     } else {
       generatePDF(
@@ -989,12 +1367,15 @@ exports.getDebtsByClient = CatchAsync(async (req, res) => {
         res,
         lifeInsuranceFields,
         `Debt report of ${formattedPolicies[0].holderName}.pdf`,
-        'N/A'
+        'N/A',
+        null,
+        null,
+        null,
+        extras
       );
     }
   } else if (req.format === 'excel') {
-    // Create and send an Excel file
-    const excelPath = path.join(__dirname, `${name}_General_Ins_report.xlsx`);
+    const excelPath = path.join(__dirname, `${name}_Debt_report.xlsx`);
     if (req.body.email) {
       generateExcel(
         formattedPolicies,
@@ -1005,7 +1386,8 @@ exports.getDebtsByClient = CatchAsync(async (req, res) => {
         'N/A',
         req.body.email,
         req.body.title,
-        req.body.description
+        req.body.description,
+        extras
       );
     } else {
       generateExcel(
@@ -1014,206 +1396,282 @@ exports.getDebtsByClient = CatchAsync(async (req, res) => {
         res,
         lifeInsuranceFields,
         `Debt report of ${formattedPolicies[0].holderName}.xlsx`,
-        'N/A'
+        'N/A',
+        null,
+        null,
+        null,
+        extras
       );
     }
   } else {
-    return res.status(400).json({
-      status: 'fail',
-      message: 'Invalid format. Specify "pdf" or "excel".'
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        reportTitle: `Debt report of ${formattedPolicies[0]?.holderName}`,
+        generatedOn: extras.asOnDate,
+        policies: formattedPolicies,
+        summary: extras.investmentSummary,
+        metrics: extras.summaryMetrics
+      }
     });
   }
 });
 
 exports.getCashFlowByClient = CatchAsync(async (req, res) => {
-  const { format } = req.body;
-  const clientId = req.userId;
+  try {
+    const { format } = req.body;
+    const clientId = req.userId;
 
-  // Fetch all life insurance policies for the client
-  const policies = await Life.find({ clientId }).lean();
-
-  if (!policies.length) {
-    return res
-      .status(404)
-      .json({ status: 'fail', message: 'No policies found for this client' });
-  }
-
-  // Fetch client and nominee details
-  const client = await User.findById(clientId).select('name DOB');
-  const nomineeIds = policies
-    .flatMap(p => [p.nominee1ID, p.nominee2ID, p.nominee3ID])
-    .filter(Boolean);
-  const nominees = await User.find({ _id: { $in: nomineeIds } }).select(
-    'name DOB'
-  );
-
-  const getAge = (DOB, year) =>
-    DOB ? Math.max(0, year - new Date(DOB).getFullYear()) : null;
-
-  // Extract all unique years
-  const allYears = new Set();
-  const companyNames = new Set();
-
-  policies.forEach(policy => {
-    let startYear = new Date(policy.startPremiumDate).getFullYear();
-    let endYear = new Date(policy.endPremiumDate).getFullYear();
-    companyNames.add(policy.companyName);
-
-    for (let year = startYear; year <= endYear; year++) {
-      allYears.add(year);
+    // 1. Fetch all policies for the client
+    const policies = await Life.find({ clientId }).lean();
+    if (!policies.length) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No policies found for this client'
+      });
     }
-    policy.claim.forEach(claim => allYears.add(claim.year));
-  });
 
-  const sortedYears = [...allYears].sort((a, b) => a - b);
-  const companies = [...companyNames];
+    // 2. Fetch client and nominee details
+    const client = await User.findById(clientId).select('name DOB');
+    const nomineeIds = policies
+      .flatMap(p => [p.nominee1ID, p.nominee2ID, p.nominee3ID])
+      .filter(Boolean);
+    const nominees = await User.find({ _id: { $in: nomineeIds } }).select(
+      'name DOB'
+    );
 
-  // Generate cash flow data
-  const cashFlowData = sortedYears.map(year => {
-    let netInflow = 0,
-      netOutflow = 0;
-    let inflowByCompany = {},
-      outflowByCompany = {};
+    // Helper function to calculate age
+    const getAge = (DOB, year) =>
+      DOB ? Math.max(0, year - new Date(DOB).getFullYear()) : null;
 
-    // Initialize inflow and outflow fields for all companies
-    companies.forEach(company => {
-      inflowByCompany[company] = 0;
-      outflowByCompany[company] = 0;
-    });
+    // 3. Extract all unique years and company names
+    const allYears = new Set();
+    const companyNames = new Set();
 
     policies.forEach(policy => {
-      const company = policy.companyName;
-
-      // Outflow (Premium Payments)
       const startYear = new Date(policy.startPremiumDate).getFullYear();
       const endYear = new Date(policy.endPremiumDate).getFullYear();
-      if (year >= startYear && year <= endYear) {
-        outflowByCompany[company] += policy.premium;
-        netOutflow += policy.premium;
+      companyNames.add(policy.companyName);
+
+      // Add premium payment years
+      for (let year = startYear; year <= endYear; year++) {
+        allYears.add(year);
       }
 
-      // Inflow (Claims)
-      const claimsForYear = policy.claim.filter(c => c.year === year);
-      claimsForYear.forEach(c => {
-        inflowByCompany[company] += c.claim;
-        netInflow += c.claim;
-      });
+      // Add claim years
+      policy.claim.forEach(claim => allYears.add(claim.year));
     });
 
-    return {
-      year,
-      clientId: clientId,
-      clientName: client?.name,
-      clientAge: getAge(client?.DOB, year),
-      nominee1ID: nomineeIds[0] || null,
-      nominee1Name: nominees.find(n => n._id.equals(nomineeIds[0]))?.name || '',
-      nominee1Age: getAge(
-        nominees.find(n => n._id.equals(nomineeIds[0]))?.DOB,
-        year
-      ),
-      nominee2ID: nomineeIds[1] || null,
-      nominee2Name: nominees.find(n => n._id.equals(nomineeIds[1]))?.name || '',
-      nominee2Age: getAge(
-        nominees.find(n => n._id.equals(nomineeIds[1]))?.DOB,
-        year
-      ),
-      nominee3ID: nomineeIds[2] || null,
-      nominee3Name: nominees.find(n => n._id.equals(nomineeIds[2]))?.name || '',
-      nominee3Age: getAge(
-        nominees.find(n => n._id.equals(nomineeIds[2]))?.DOB,
-        year
-      ),
-      ...Object.fromEntries(
-        companies.map(company => [
-          `InFlow of ${company}`,
-          inflowByCompany[company]
-        ])
-      ),
-      NetInflow: netInflow,
-      ...Object.fromEntries(
-        companies.map(company => [
-          `OutFlow of ${company}`,
-          outflowByCompany[company]
-        ])
-      ),
-      NetOutflow: netOutflow,
-      NetCashFlow: netInflow - netOutflow
-    };
-  });
-  cashFlowData[0]?.nominee1ID?.name;
-  // Generate cashFlowLabels dynamically
-  const cashFlowLabels = [
-    { label: 'Year', value: 'year' },
-    { label: `${client?.name}`, value: 'clientAge' },
-    { label: `${cashFlowData[0]?.nominee1Name}`, value: 'nominee1Age' },
-    { label: `${cashFlowData[0]?.nominee2Name}`, value: 'nominee2Age' },
-    { label: `${cashFlowData[0]?.nominee3Name}`, value: 'nominee3Age' },
-    ...companies.map(company => ({
-      label: `InFlow of ${company}`,
-      value: `InFlow of ${company}`
-    })),
-    { label: 'Net Inflow', value: 'NetInflow' },
-    ...companies.map(company => ({
-      label: `OutFlow of ${company}`,
-      value: `OutFlow of ${company}`
-    })),
-    { label: 'Net Outflow', value: 'NetOutflow' },
-    { label: 'Net Cash Flow', value: 'NetCashFlow' }
-  ];
+    const sortedYears = [...allYears].sort((a, b) => a - b);
+    const companies = [...companyNames];
 
-  // Generate PDF or Excel
-  if (format === 'pdf') {
-    const pdfPath = path.join(__dirname, `${client?.name}_Cash_Flow.pdf`);
-    if (req.body.email) {
-      generatePDF(
+    // 4. Generate cash flow data and calculate metrics
+    let lastPremiumYear = null;
+    let premiumFreeYear = null;
+    let totalNetInflow = 0;
+    let totalNetOutflow = 0;
+    let totalNetCashFlow = 0;
+
+    // First pass to collect all years data
+    const yearlyData = sortedYears.map(year => {
+      let netInflow = 0;
+      let netOutflow = 0;
+      const inflowByCompany = {};
+      const outflowByCompany = {};
+
+      // Initialize company totals
+      companies.forEach(company => {
+        inflowByCompany[company] = 0;
+        outflowByCompany[company] = 0;
+      });
+
+      // Calculate flows for each policy
+      policies.forEach(policy => {
+        const company = policy.companyName;
+
+        // Premium payments (outflow)
+        const startYear = new Date(policy.startPremiumDate).getFullYear();
+        const endYear = new Date(policy.endPremiumDate).getFullYear();
+        if (year >= startYear && year <= endYear) {
+          const premium = policy.premium || 0;
+          outflowByCompany[company] += premium;
+          netOutflow += premium;
+        }
+
+        // Claims (inflow)
+        policy.claim
+          .filter(c => c.year === year)
+          .forEach(c => {
+            const claimAmount = c.claim || 0;
+            inflowByCompany[company] += claimAmount;
+            netInflow += claimAmount;
+          });
+      });
+
+      // Track last premium year
+      if (netOutflow > 0) {
+        lastPremiumYear = year;
+      }
+
+      // Update totals
+      totalNetInflow += netInflow;
+      totalNetOutflow += netOutflow;
+      totalNetCashFlow += netInflow - netOutflow;
+
+      return {
+        year,
+        netInflow,
+        netOutflow,
+        companies,
+        inflowByCompany,
+        outflowByCompany
+      };
+    });
+
+    // Second pass to find premiumFreeYear
+    for (let i = 0; i < yearlyData.length; i++) {
+      const { year, netInflow, netOutflow } = yearlyData[i];
+
+      if (netInflow > 0 && netOutflow === 0) {
+        // Check if all future years have no outflow
+        const allFutureOutflowsZero = yearlyData
+          .slice(i + 1)
+          .every(data => data.netOutflow === 0);
+
+        if (allFutureOutflowsZero) {
+          premiumFreeYear = year;
+          break; // We found the first qualifying year
+        }
+      }
+    }
+
+    // Prepare final cashFlowData with all required fields
+    const cashFlowData = yearlyData.map(data => ({
+      year: data.year,
+      clientName: client?.name || 'Client',
+      clientAge: getAge(client?.DOB, data.year),
+      ...Object.fromEntries(
+        data.companies.map(company => [
+          `InFlow_${company}`,
+          data.inflowByCompany[company]
+        ])
+      ),
+      NetInflow: data.netInflow,
+      ...Object.fromEntries(
+        data.companies.map(company => [
+          `OutFlow_${company}`,
+          data.outflowByCompany[company]
+        ])
+      ),
+      NetOutflow: data.netOutflow,
+      NetCashFlow: data.netInflow - data.netOutflow
+    }));
+
+    // 5. Prepare the investment summary
+    const investmentSummary = {
+      investor: client?.name || 'Client',
+      currency: '₹'
+    };
+
+    // Add last premium details if exists
+    if (lastPremiumYear) {
+      investmentSummary.lastPremiumYear = lastPremiumYear;
+      investmentSummary.lastPremiumAge = getAge(client?.DOB, lastPremiumYear);
+    }
+
+    // Add premium free with inflow details if exists and different from last premium year
+    if (premiumFreeYear && premiumFreeYear - 1 !== lastPremiumYear) {
+      investmentSummary.premiumFreeYear = premiumFreeYear;
+      investmentSummary.premiumFreeAndInflowAge = getAge(
+        client?.DOB,
+        premiumFreeYear
+      );
+    }
+
+    // Prepare the extras object
+    const extras = {
+      asOnDate: new Date().toLocaleDateString('en-IN'),
+      investmentSummary: investmentSummary,
+      summaryMetrics: {
+        NetInflow: totalNetInflow.toLocaleString('en-IN', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        }),
+        NetOutflow: totalNetOutflow.toLocaleString('en-IN', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        }),
+        NetCashFlow: totalNetCashFlow.toLocaleString('en-IN', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        })
+      }
+    };
+
+    // 6. Generate report labels
+    const cashFlowLabels = [
+      { label: 'Year', value: 'year' },
+      { label: 'Client Age', value: 'clientAge' },
+      ...companies.map(company => ({
+        label: `${company} Inflow`,
+        value: `InFlow_${company}`
+      })),
+      { label: 'Total Inflow', value: 'NetInflow' },
+      ...companies.map(company => ({
+        label: `${company} Outflow`,
+        value: `OutFlow_${company}`
+      })),
+      { label: 'Total Outflow', value: 'NetOutflow' },
+      { label: 'Net Cash Flow', value: 'NetCashFlow' }
+    ];
+
+    // 7. Generate the requested output format
+    if (format === 'pdf') {
+      const pdfPath = path.join(__dirname, `${client?.name}_CashFlow.pdf`);
+      await generatePDF(
         cashFlowData,
         pdfPath,
         res,
         cashFlowLabels,
-        `Cash Flow Report of ${client.name}.pdf`,
-        '0',
+        `Cash Flow Report - ${client?.name}.pdf`,
+        '-',
         req.body.email,
-        req.body.title,
-        req.body.description
+        req.body.title || 'Cash Flow Report',
+        req.body.description || `Cash flow analysis for ${client?.name}`,
+        extras
       );
-    } else {
-      generatePDF(
-        cashFlowData,
-        pdfPath,
-        res,
-        cashFlowLabels,
-        `Cash Flow Report of ${client.name}.pdf`,
-        '0'
-      );
-    }
-  } else if (format === 'excel') {
-    const excelPath = path.join(__dirname, `${client?.name}_Cash_Flow.xlsx`);
-    if (req.body.email) {
-      generateExcel(
+    } else if (format === 'excel') {
+      const excelPath = path.join(__dirname, `${client?.name}_CashFlow.xlsx`);
+      await generateExcel(
         cashFlowData,
         excelPath,
         res,
         cashFlowLabels,
-        `Cash Flow Report of ${client.name}.xlsx`,
-        '0',
+        `Cash Flow Report - ${client?.name}.xlsx`,
+        '-',
         req.body.email,
-        req.body.title,
-        req.body.description
+        req.body.title || 'Cash Flow Report',
+        req.body.description || `Cash flow analysis for ${client?.name}`,
+        extras
       );
     } else {
-      generateExcel(
-        cashFlowData,
-        excelPath,
-        res,
-        cashFlowLabels,
-        `Cash Flow Report of ${client.name}.xlsx`,
-        '0'
-      );
+      // Return JSON response
+      return res.status(200).json({
+        status: 'success',
+        data: {
+          reportTitle: `Cash Flow Report - ${client?.name}`,
+          generatedOn: extras.asOnDate,
+          cashFlowData,
+          extras
+        }
+      });
     }
-  } else {
-    return res.status(400).json({
-      status: 'fail',
-      message: 'Invalid format. Specify "pdf" or "excel".'
+  } catch (error) {
+    console.error('Error generating cash flow report:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'An error occurred while generating the report',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

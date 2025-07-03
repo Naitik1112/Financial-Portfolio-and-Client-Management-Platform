@@ -99,8 +99,8 @@ const AddPolicy = () => {
            // Log to check response structure
   
           // Access nested array and map the user names
-          if (data?.data?.data) {
-            const userNames = data.data.data.map((user) => ({ label: user.name }));
+          if (data?.data) {
+            const userNames = data.data.map((user) => ({ label: user.name, id: user._id }));
             setTop100Films(userNames);
           } else {
             throw new Error('Unexpected response structure');
@@ -117,31 +117,14 @@ const AddPolicy = () => {
     const handleSubmit = async () => {
       try {
         let adjustedPremium = parseFloat(premium);
-    
-        // Adjust premium based on mode
-        // if (mode === "Monthly") {
-        //   adjustedPremium *= 12;
-        // } else if (mode === "Quaterly") {
-        //   adjustedPremium *= 4;
-        // } else if (mode === "Half-Yearly") {
-        //   adjustedPremium *= 2;
-        // }
-    
+
         const formattedPolicyData = {
           ...policyData,
-          premium: adjustedPremium, // Updated premium value
-          startPremiumDate: startPremiumDate
-            ? dayjs(startPremiumDate).format('YYYY-MM-DDT00:00:00.000Z')
-            : null,
-          endPremiumDate: endPremiumDate
-            ? dayjs(endPremiumDate).format('YYYY-MM-DDT00:00:00.000Z')
-            : null,
-          maturityDate: maturityDate
-            ? dayjs(maturityDate).format('YYYY-MM-DDT00:00:00.000Z')
-            : null,
-          deathClaimDate: deathClaimDate
-            ? dayjs(deathClaimDate).format('YYYY-MM-DDT00:00:00.000Z')
-            : null,
+          premium: adjustedPremium,
+          startPremiumDate: startPremiumDate ? dayjs(startPremiumDate).format('YYYY-MM-DDT00:00:00.000Z') : null,
+          endPremiumDate: endPremiumDate ? dayjs(endPremiumDate).format('YYYY-MM-DDT00:00:00.000Z') : null,
+          maturityDate: maturityDate ? dayjs(maturityDate).format('YYYY-MM-DDT00:00:00.000Z') : null,
+          deathClaimDate: deathClaimDate ? dayjs(deathClaimDate).format('YYYY-MM-DDT00:00:00.000Z') : null,
           claim: claims.map((c) => ({
             year: parseInt(c.year, 10),
             claim: parseFloat(c.premium),
@@ -151,13 +134,12 @@ const AddPolicy = () => {
           nominee1ID: nominee1Id,
           nominee2ID: nominee2Id,
           nominee3ID: nominee3Id,
-          policyName: policyName,
-          companyName: companyName,
-          policyNumber: policyNumber,
-          deathClaim: deathClaim
+          policyName,
+          companyName,
+          policyNumber,
+          deathClaim
         };
-        
-        console.log(formattedPolicyData)
+
         const response = await fetch(`${backendURL}/api/v1/lifeInsurance`, {
           method: 'POST',
           headers: {
@@ -166,11 +148,11 @@ const AddPolicy = () => {
           },
           body: JSON.stringify(formattedPolicyData),
         });
-    
+
         if (response.ok) {
-          const result = await response.json();
-          alert('Policy added successfully!');
-          window.location.reload();
+          alert('Life Insurance Policy added successfully!');
+          // Reset all form fields
+          window.location.reload(); 
         } else {
           const error = await response.json();
           alert(`Error: ${error.message}`);
@@ -180,6 +162,7 @@ const AddPolicy = () => {
         alert('An error occurred while submitting the policy.');
       }
     };
+
     
     
   
@@ -213,8 +196,13 @@ const AddPolicy = () => {
       <Box sx={{display: 'flex',flexDirection: 'column',gap: 2,width: '45ch',}}>
         <TextField id="outlined-basic-2" label="Premium" type="number" variant="outlined" onChange={(e) => setPremium(e.target.value)}
             sx={inputStyles}/>
-        <Autocomplete sx={inputStyles} disablePortal options={type} renderInput={(params) => <TextField {...params} label="Mode" />}
+        <Autocomplete 
+          sx={inputStyles}
+          disablePortal
+          options={type}
+          value={type.find(option => option.label === mode) || null}
           onChange={(event, newValue) => setMode(newValue?.label || '')}
+          renderInput={(params) => <TextField {...params} label="Mode" />}
           componentsProps={{
             paper: {
               sx: {
@@ -224,8 +212,12 @@ const AddPolicy = () => {
             },
           }}
         />
-        <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Holder Name" />}
-          onChange={(event, newValue) => setClientId(newValue?.label || '')}
+        <Autocomplete 
+          options={top100Films}
+          value={top100Films.find((option) => option.id === clientId) || null}
+          onChange={(event, newValue) => setClientId(newValue?.id || '')}
+          renderInput={(params) => <TextField {...params} label="Holder Name" />}
+          sx={inputStyles}
           componentsProps={{
             paper: {
               sx: {
@@ -235,8 +227,12 @@ const AddPolicy = () => {
             },
           }}
         />
-        <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 1" />}
-          onChange={(event, newValue) => setNominee1Id(newValue?.label || '')}
+        <Autocomplete 
+          options={top100Films}
+          value={top100Films.find((option) => option.id === nominee1Id) || null}
+          onChange={(event, newValue) => setNominee1Id(newValue?.id || '')}
+          renderInput={(params) => <TextField {...params} label="Nominee 1" />}
+          sx={inputStyles}
           componentsProps={{
             paper: {
               sx: {
@@ -246,8 +242,12 @@ const AddPolicy = () => {
             },
           }}
         />
-        <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 2" />}
-          onChange={(event, newValue) => setNominee2Id(newValue?.label || '')}
+        <Autocomplete 
+          options={top100Films}
+          value={top100Films.find((option) => option.id === nominee2Id) || null}
+          onChange={(event, newValue) => setNominee2Id(newValue?.id || '')}
+          renderInput={(params) => <TextField {...params} label="Nominee 2" />}
+          sx={inputStyles}
           componentsProps={{
             paper: {
               sx: {
@@ -257,13 +257,17 @@ const AddPolicy = () => {
             },
           }}
         />
-        <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 3" />}
-          onChange={(event, newValue) => setNominee3Id(newValue?.label || '')}
+        <Autocomplete 
+          options={top100Films}
+          value={top100Films.find((option) => option.id === nominee3Id) || null}
+          onChange={(event, newValue) => setNominee3Id(newValue?.id || '')}
+          renderInput={(params) => <TextField {...params} label="Nominee 3" />}
           componentsProps={{
             paper: {
               sx: {
                 bgcolor: "grey", // Background color of the dropdown menu
                 color: "black",  // Text color (optional)
+                ...inputStyles
               },
             },
           }}

@@ -194,8 +194,8 @@ const IndividualReport = () => {
       return;
     }
     setEmail(holderName.email || '');
-    setTitle(`${holderName.label}'s ${selectedReport.label}`);
-    setDescription(`Please find attached your ${selectedReport.label}`);
+    setTitle(`${selectedReport.label} report of ${holderName.label}`);
+    setDescription(`Dear ${holderName.label}\nPlease find attached your ${selectedReport.label}`);
     setSendModalOpen(true);
   };
 
@@ -397,7 +397,7 @@ const IndividualReport = () => {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: 400,
+          width: 'min(80%,500px)',
           bgcolor: background5,
           boxShadow: 24,
           p: 4,
@@ -408,7 +408,7 @@ const IndividualReport = () => {
           </Typography>
           <Autocomplete
             freeSolo
-            options={top100Films.map(user => user.email)}
+            options={holderName ? [holderName.email] : []}
             value={email}
             onChange={(event, newValue) => {
               setEmail(newValue);

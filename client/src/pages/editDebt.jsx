@@ -37,8 +37,8 @@ const EditFixedDeposit = () => {
           },
         });
         const data = await response.json();
-        if (data?.data?.data) {
-          setTop100Films(data.data.data.map((user) => ({ label: user.name })));
+        if (data?.data) {
+          setTop100Films(data.data.map((user) => ({ label: user.name, id: user._id })));
         }
       } catch (error) {
         console.error('Error fetching user names:', error);
@@ -54,17 +54,18 @@ const EditFixedDeposit = () => {
           },
         });
         const data = await response.json();
+        console.log(data)
         if (data?.data) {
           setBankDetails(data.data.data.bankDetails || '');
           setAccountNumber(data.data.data.AccountNumber || '');
           setintrestRate(data.data.data.intrestRate || '');
           setAmount(data.data.data.amount || '');
-          setStartDate(data.data.data.startDate ? dayjs(data.data.startDate) : null);
-          setMaturityDate(data.data.data.MaturityDate ? dayjs(data.data.MaturityDate) : null);
-          setHolderId(data.data.data.holderId?.name || '');
-          setNominee1Id(data.data.data.nominee1Id?.name || '');
-          setNominee2Id(data.data.data.nominee2Id?.name || '');
-          setNominee3Id(data.data.data.nominee3Id?.name || '');
+          setStartDate(data.data.data.startDate ? dayjs(data.data.data.startDate) : null);
+          setMaturityDate(data.data.data.MaturityDate ? dayjs(data.data.data.MaturityDate) : null);
+          setHolderId(data.data.data.holderId?._id || '');
+          setNominee1Id(data.data.data.nominee1Id?._id || '');
+          setNominee2Id(data.data.data.nominee2Id?._id || '');
+          setNominee3Id(data.data.data.nominee3Id?._id || '');
         }
         console.log(data.data.data.holderId)
       } catch (error) {
@@ -93,7 +94,7 @@ const EditFixedDeposit = () => {
       amount,
       startDate: startDate.format('YYYY-MM-DD'),
     };
-
+    console.log(payload)
     try {
       const response = await fetch(`${backendURL}/api/v1/debt/${id}`, {
         method: 'PATCH',
@@ -115,7 +116,6 @@ const EditFixedDeposit = () => {
       alert('Failed to update FD. Please try again.');
     }
   };
-  console.log(BankDetails)
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%',marginTop:'120PX',padding:'40px', ...containerStyles }}>
       <Typography sx={{ fontSize: '2rem', fontWeight: 'bold', color: 'rgb(178, 178, 178)', textAlign: 'center' }}>Edit Fixed Deposit</Typography>
@@ -139,11 +139,11 @@ const EditFixedDeposit = () => {
               options={top100Films}
               getOptionLabel={(option) => option.label || ""}
               renderInput={(params) => <TextField {...params} label={`Nominee ${index + 1} ID`} sx={inputStyles} />}
-              value={top100Films.find((option) => option.label === nominee) || null}
+              value={top100Films.find((option) => option.id === nominee) || null}
               onChange={(e, newValue) => {
-                if (index === 0) setNominee1Id(newValue?.label || '');
-                if (index === 1) setNominee2Id(newValue?.label || '');
-                if (index === 2) setNominee3Id(newValue?.label || '');
+                if (index === 0) setNominee1Id(newValue?.id || '');
+                if (index === 1) setNominee2Id(newValue?.id || '');
+                if (index === 2) setNominee3Id(newValue?.id || '');
               }}
               componentsProps={{
                 paper: {
@@ -159,8 +159,8 @@ const EditFixedDeposit = () => {
             options={top100Films}
             getOptionLabel={(option) => option.label || ""}
             renderInput={(params) => <TextField {...params} label="Holder Name" sx={inputStyles} />}
-            value={top100Films.find((option) => option.label === holderId) || null}
-            onChange={(e, newValue) => setHolderId(newValue?.label || '')}
+            value={top100Films.find((option) => option.id === holderId) || null}
+            onChange={(e, newValue) => setHolderId(newValue?.id || '')}
             componentsProps={{
               paper: {
                 sx: {

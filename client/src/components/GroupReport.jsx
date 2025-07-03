@@ -46,11 +46,9 @@ const GroupReport = () => {
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
-  const [emailOptions, setEmailOptions] = useState([]);
-  const [selectedEmail, setSelectedEmail] = useState(null);
 
   const { darkMode } = useThemeMode();
-  const { inputStyles, buttonStyles, containerStyles1, containerStyles3, background,background2,background3,background4,background5, background1,fontColor,paperBg, primaryColor, secondaryColor, tertiaryColor } = getStyles(darkMode);
+  const { inputStyles, buttonStyles, containerStyles1, containerStyles3, background, background2, background3, background4, background5, background1, fontColor, paperBg, primaryColor, secondaryColor, tertiaryColor } = getStyles(darkMode);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -82,20 +80,6 @@ const GroupReport = () => {
     fetchUsers();
   }, [selectedGroup]);
 
-  useEffect(() => {
-    if (groupUsers.length > 0) {
-      const emails = groupUsers.map(user => ({
-        label: user.email,
-        value: user.email
-      }));
-      setEmailOptions(emails);
-      // Set the first email as default if no email is selected
-      if (emails.length > 0 && !selectedEmail) {
-        setSelectedEmail(emails[0]);
-      }
-    }
-  }, [groupUsers]);
-
   const handleUserSelection = (userId, isChecked) => {
     setSelectedUsers(prev => 
       isChecked 
@@ -113,8 +97,7 @@ const GroupReport = () => {
     setDownloadFormat(null);
     setSelectedUsers([]);
     setGroupUsers([]);
-    setSelectedEmail(null);
-    setEmailOptions([]);
+    setEmail('');
     setTitle('');
     setDescription('');
     setSendModalOpen(false);
@@ -179,19 +162,21 @@ const GroupReport = () => {
       alert(`Failed to download report: ${error.message}`);
       resetForm();
     }
-    resetForm();
   };
 
-  const handleSendToClient = async () => {
+  const handleSendToClient = () => {
     if (!selectedGroup || !selectedReport || !downloadFormat || selectedUsers.length === 0) {
       alert('Please fill all fields and select at least one user!');
       return;
     }
+    // Set default title and description
+    setTitle(`${selectedReport.label} of ${selectedGroup.label}`);
+    setDescription(`Dear Client,\n\nPlease find attached your ${selectedReport.label} for ${selectedGroup.label} group.`);
     setSendModalOpen(true);
   };
 
   const handleSendSubmit = async () => {
-    if (!selectedEmail || !title || !description) {
+    if (!email || !title || !description) {
       alert('Please fill all fields!');
       return;
     }
@@ -214,12 +199,13 @@ const GroupReport = () => {
       groupName: selectedGroup.label,
       userIds: selectedUsers,
       format: downloadFormat.value,
-      email: selectedEmail.value,
+      email,
       title,
       description
     };
 
     try {
+      setLoading(true);
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 
@@ -240,8 +226,9 @@ const GroupReport = () => {
       console.error('Error:', error.message);
       alert(`Failed to send report: ${error.message}`);
       resetForm();
+    } finally {
+      setLoading(false);
     }
-
   };
 
   return (
@@ -281,7 +268,6 @@ const GroupReport = () => {
           onChange={(event, value) => setSelectedReport(value)}
           renderInput={(params) => <TextField {...params} label="Report Type" />}
         />
-
 
         <Autocomplete
           sx={inputStyles}
@@ -374,7 +360,7 @@ const GroupReport = () => {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: 400,
+          width: 'min(80%,500px)',
           bgcolor: background5,
           boxShadow: 24,
           p: 4,
@@ -382,13 +368,19 @@ const GroupReport = () => {
         }}>
           <Typography variant="h6" mb={2} sx={{color: fontColor}}>Send Report to Client</Typography>
           <Autocomplete
-            options={emailOptions}
-            value={selectedEmail}
-            onChange={(event, newValue) => setSelectedEmail(newValue)}
+            freeSolo
+            options={groupUsers.map(user => user.email)}
+            value={email}
+            onChange={(event, newValue) => {
+              setEmail(newValue);
+            }}
+            onInputChange={(event, newInputValue) => {
+              setEmail(newInputValue);
+            }}
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Client Email"
+                label="Email"
                 margin="normal"
                 sx={{
                   '& .MuiInputBase-input': { color: fontColor },
@@ -434,11 +426,18 @@ const GroupReport = () => {
             }}
           />
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-            <Button onClick={() => setSendModalOpen(false)} sx={{ mr: 2 }}>
+            <Button 
+              onClick={() => setSendModalOpen(false)} 
+              sx={{ mr: 2, color: fontColor }}
+            >
               Cancel
             </Button>
-            <Button variant="contained" onClick={handleSendSubmit}>
-              Send
+            <Button 
+              variant="contained" 
+              onClick={handleSendSubmit}
+              disabled={loading}
+            >
+              {loading ? 'Sending...' : 'Send'}
             </Button>
           </Box>
         </Box>

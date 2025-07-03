@@ -19,28 +19,31 @@ exports.convertNameToId = catchAsync(async (req, res, next) => {
   const { holderId, nominee1Id, nominee2Id, nominee3Id } = req.body;
 
   // Convert holder name to ID if not already an ID
-  if (holderId && holderId.trim() !== '') {
-    req.body.holderId = await findIdByName(holderId);
-  }
+  // if (holderId && holderId.trim() !== '') {
+  //   req.body.holderId = await findIdByName(holderId);
+  // }
 
   // Process nominees, removing them if their value is empty
   if (!nominee1Id || nominee1Id.trim() === '') {
     delete req.body.nominee1Id; // Remove nominee1Id if it's empty
-  } else {
-    req.body.nominee1Id = await findIdByName(nominee1Id);
-  }
+  } 
+  // else {
+  //   req.body.nominee1Id = await findIdByName(nominee1Id);
+  // }
 
   if (!nominee2Id || nominee2Id.trim() === '') {
     delete req.body.nominee2Id; // Remove nominee2Id if it's empty
-  } else {
-    req.body.nominee2Id = await findIdByName(nominee2Id);
-  }
+  } 
+  // else {
+  //   req.body.nominee2Id = await findIdByName(nominee2Id);
+  // }
 
   if (!nominee3Id || nominee3Id.trim() === '') {
     delete req.body.nominee3Id; // Remove nominee3Id if it's empty
-  } else {
-    req.body.nominee3Id = await findIdByName(nominee3Id);
-  }
+  } 
+  // else {
+  //   req.body.nominee3Id = await findIdByName(nominee3Id);
+  // }
 
   next(); // Move to the next middleware or route handler
 });

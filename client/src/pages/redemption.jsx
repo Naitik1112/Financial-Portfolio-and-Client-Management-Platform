@@ -33,8 +33,8 @@ const AddClient = () => {
           }
         });
         const data = await response.json();
-        if (data?.data?.data) {
-          const userNames = data.data.data.map((user) => ({ label: user.name, id: user._id }));
+        if (data?.data) {
+          const userNames = data.data.map((user) => ({ label: user.name, id: user._id }));
           setTop100Films(userNames);
         } else {
           throw new Error('Unexpected response structure');

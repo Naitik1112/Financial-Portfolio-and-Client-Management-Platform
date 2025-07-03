@@ -52,6 +52,8 @@ const EditPolicy = () => {
   const { darkMode } = useThemeMode();
   const {  inputStyles, buttonStyles,containerStyles, containerStyles1 } = getStyles(darkMode)
 
+  
+
   useEffect(() => {
     const fetchPolicyData = async () => {
       try {
@@ -63,10 +65,10 @@ const EditPolicy = () => {
         });
         const data = response.data.data.data;
         console.log(data)
-        setClientId(data.clientId?.name || '');
-        setNominee1Id(data.nominee1ID?.name || '');
-        setNominee2Id(data.nominee2ID?.name || '');
-        setNominee3Id(data.nominee3ID?.name || '');
+        setClientId(data.clientId?._id || '');
+        setNominee1Id(data.nominee1ID?._id || '');
+        setNominee2Id(data.nominee2ID?._id || '');
+        setNominee3Id(data.nominee3ID?._id || '');
         setMode(data.mode || '');
         setPolicyName(data.policyName || '');
         setCompanyName(data.companyName || ' ');
@@ -126,7 +128,7 @@ const EditPolicy = () => {
   const handleChange = (field, value) => {
     setPolicyData({ ...policyData, [field]: value });
   };
-
+  
   useEffect(() => {
       const fetchUserNames = async () => {
         try {
@@ -140,8 +142,8 @@ const EditPolicy = () => {
            // Log to check response structure
   
           // Access nested array and map the user names
-          if (data?.data?.data) {
-            const userNames = data.data.data.map((user) => ({ label: user.name }));
+          if (data?.data) {
+            const userNames = data.data.map((user) => ({ label: user.name , id: user._id}));
             setTop100Films(userNames);
           } else {
             throw new Error('Unexpected response structure');
@@ -170,7 +172,7 @@ const EditPolicy = () => {
     
         const formattedPolicyData = {
           ...policyData,
-          claim: adjustedPremium, // Updated premium value
+          premium: adjustedPremium, // Updated premium value
           startPremiumDate: startPremiumDate
             ? dayjs(startPremiumDate).format('YYYY-MM-DDT00:00:00.000Z')
             : null,
@@ -196,11 +198,11 @@ const EditPolicy = () => {
           deathClaimDate: deathClaimDate
 
         };
-        
-        const response = await fetch(`/api/v1/lifeInsurance/${id}`, {
+        const response = await fetch(`${backendURL}/api/v1/lifeInsurance/${id}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
           },
           body: JSON.stringify(formattedPolicyData),
         });
@@ -218,13 +220,13 @@ const EditPolicy = () => {
         alert('An error occurred while submitting the policy.');
       }
     };
-    
-    
-  
+      
+  const clientName = top100Films.find(user => user.id === clientId)?.label || clientId;
+
   return (
     <Box sx={{display: 'flex',flexDirection: 'column',justifyContent: 'space-between', marginTop: '120px',padding:'40px', gap: 4,width: '100%',...containerStyles}}>
       <Typography sx={{fontSize: '2rem', fontWeight: 'bold', color: 'rgb(187,187,187)', textAlign: 'center', marginBottom: '10px',}}>
-        Update Life Insurance of {clientId}
+        Update {policyName} of {clientName}
       </Typography>
       <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between',  gap: 4, width: '100%', }}>
         <Box sx={{ display: 'flex',flexDirection: 'column',gap: 2,width: '45ch',}}>
@@ -268,7 +270,8 @@ const EditPolicy = () => {
               },
             },
           }}
-          value={clientId} onChange={(event, newValue) => setClientId(newValue?.label || '')}
+          value={top100Films.find((option) => option.id === clientId) || null}
+          onChange={(event, newValue) => setClientId(newValue?.id || '')}
         />
         <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 1" />} componentsProps={{
             paper: {
@@ -278,7 +281,8 @@ const EditPolicy = () => {
               },
             },
           }}
-          value={nominee1Id} onChange={(event, newValue) => setNominee1Id(newValue?.label || '')}
+          value={top100Films.find((option) => option.id === nominee1Id) || null}
+          onChange={(event, newValue) => setNominee1Id(newValue?.id || '')}
         />
         <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 2" />} componentsProps={{
             paper: {
@@ -288,7 +292,8 @@ const EditPolicy = () => {
               },
             },
           }}
-          value={nominee2Id} onChange={(event, newValue) => setNominee2Id(newValue?.label || '')}
+          value={top100Films.find((option) => option.id === nominee2Id) || null}
+          onChange={(event, newValue) => setNominee2Id(newValue?.id || '')}
         />
         <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 3" />} componentsProps={{
             paper: {
@@ -298,7 +303,8 @@ const EditPolicy = () => {
               },
             },
           }}
-          value={nominee3Id} onChange={(event, newValue) => setNominee3Id(newValue?.label || '')}
+          value={top100Films.find((option) => option.id === nominee3Id) || null}
+          onChange={(event, newValue) => setNominee3Id(newValue?.id || '')}
         />
         
       </Box>
@@ -322,7 +328,6 @@ const EditPolicy = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column',alignItems:'left',justifyContent:"center",  width: '30%' }}> 
           <Button size="large"
             sx={{ 
-              backgroundImage: 'linear-gradient(90deg,rgb(124, 97, 44),rgb(192, 169, 108))', 
               color: '#000', 
               height: "80%",
               width: "80%",
@@ -401,7 +406,6 @@ const EditPolicy = () => {
     
     <Button size="large"
      sx={{ 
-      backgroundImage: 'linear-gradient(90deg,rgb(124, 97, 44),rgb(192, 169, 108))', 
       color: '#000', // Text color // Slightly darker gradient on hover
       marginBottom: "50px",
       ...buttonStyles

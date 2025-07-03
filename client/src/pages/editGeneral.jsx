@@ -10,6 +10,8 @@ import Autocomplete from '@mui/material/Autocomplete';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
+import { useMemo } from 'react';
+
 
 import { getStyles } from "../styles/themeStyles";
 import { useThemeMode } from "../context/ThemeContext";
@@ -59,7 +61,7 @@ const AddGeneral = () => {
         });
         const data = response.data.data.data;
         console.log(data)
-        setClientId(data.clientId?.name || '');
+        setClientId(data.clientId?.id || '');
         setNominee1Id(data.nominee1ID?.name || '');
         setType(data.type || '');
         setvehicleId(data.vehicleID || '')
@@ -164,8 +166,8 @@ const AddGeneral = () => {
            // Log to check response structure
   
           // Access nested array and map the user names
-          if (data?.data?.data) {
-            const userNames = data.data.data.map((user) => ({ label: user.name }));
+          if (data?.data) {
+            const userNames = data.data.map((user) => ({ label: user.name , id: user._id}));
             setTop100Films(userNames);
           } else {
             throw new Error('Unexpected response structure');
@@ -178,6 +180,14 @@ const AddGeneral = () => {
       fetchUserNames();
     }, []);
 
+    const selectedClientOption = useMemo(() => {
+      return top100Films.find(user => user.id === clientId) || null;
+    }, [top100Films, clientId]);
+
+    
+    
+    const clientName = top100Films.find(user => user.id === clientId)?.label || clientId;
+    const clientName1 = `${clientName}`;
 
     const handleSubmit = async () => {
       try {
@@ -210,7 +220,6 @@ const AddGeneral = () => {
           })),
           type,
           clientId,
-          nominee1ID: nominee1Id,
           vehicleID: vehicleId,
           policyName: policyName,
           companyName: companyName,
@@ -231,7 +240,7 @@ const AddGeneral = () => {
     
         if (response.ok) {
           const result = await response.json();
-          alert(`${clientId}'s ${type} has been Updated successfully!`);
+          alert(`${clientName}'s ${policyName} has been Updated successfully!`);
           window.location.reload();
         } else {
           const error = await response.json();
@@ -242,14 +251,11 @@ const AddGeneral = () => {
         alert('An error occurred while submitting the policy.');
       }
     };
-    
-    
-  
 
   return (
     <Box sx={{display: 'flex',flexDirection: 'column',justifyContent: 'space-between',padding:'40px',marginTop: '120px', gap: 4,width: '100%',...containerStyles}}>
       <Typography sx={{fontSize: '2rem', fontWeight: 'bold', color: '#fff', textAlign: 'center',  marginBottom: '10px',}}>
-        Update {clientId}'s {type}
+        Update {clientName1}'s {policyName}
       </Typography>
       <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between',  gap: 4, width: '100%', }}>
         <Box sx={{ display: 'flex',flexDirection: 'column',gap: 2,width: '45ch',}}>
@@ -267,8 +273,14 @@ const AddGeneral = () => {
       </Box>
   
       <Box sx={{display: 'flex',flexDirection: 'column',gap: 2,width: '45ch',}}>
-        <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Holder Name" />}
-          value={clientId}  onChange={(event, newValue) => setClientId(newValue?.label || '')}
+
+        <Autocomplete 
+          sx={inputStyles}
+          disablePortal
+          options={top100Films}
+          renderInput={(params) => <TextField {...params} label="Holder Name" />}
+          value={selectedClientOption}
+          onChange={(event, newValue) => setClientId(newValue?.id || '')}
           componentsProps={{
             paper: {
               sx: {
@@ -278,17 +290,7 @@ const AddGeneral = () => {
             },
           }}
         />
-        <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 1" />}
-          value={nominee1Id} onChange={(event, newValue) => setNominee1Id(newValue?.label || '')}
-          componentsProps={{
-            paper: {
-              sx: {
-                bgcolor: "grey", // Background color of the dropdown menu
-                color: "black",  // Text color (optional)
-              },
-            },
-          }}
-        />
+
         <TextField id="vehicle N.o" label="Vehicle N.o" onChange={(e) => setvehicleId(e.target.value)} variant="outlined"
           value={vehicleId} sx={inputStyles}
         />
@@ -439,7 +441,7 @@ const AddGeneral = () => {
               <TextField
                 label="Claim Requested"
                 type='number'
-                value={claim.premium}
+                value={claim.claim}
                 onChange={(e) => handleClaimChange(index, 'claim', e.target.value)}
                 sx={inputStyles}
               />

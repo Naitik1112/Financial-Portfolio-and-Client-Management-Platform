@@ -16,23 +16,27 @@ exports.convertNameToId = catchAsync(async (req, res, next) => {
   const { clientId, nominee1ID, nominee2ID, nominee3ID } = req.body;
   // Convert names to ObjectIds
   if (clientId && clientId.trim() !== '') {
-    req.body.clientId = await findIdByName(clientId);
+    // req.body.clientId = await findIdByName(clientId);
+    console.log('');
   }
 
   if (nominee1ID && nominee1ID.trim() !== '') {
-    req.body.nominee1ID = await findIdByName(nominee1ID);
+    // req.body.nominee1ID = await findIdByName(nominee1ID);
+    console.log('');
   } else {
     delete req.body.nominee1ID;
   }
 
   if (nominee2ID && nominee2ID.trim() !== '') {
-    req.body.nominee2ID = await findIdByName(nominee2ID);
+    // req.body.nominee2ID = await findIdByName(nominee2ID);
+    console.log('');
   } else {
     delete req.body.nominee2ID;
   }
 
   if (nominee3ID && nominee3ID.trim() !== '') {
-    req.body.nominee3ID = await findIdByName(nominee3ID);
+    // req.body.nominee3ID = await findIdByName(nominee3ID);
+    console.log('');
   } else {
     delete req.body.nominee3ID;
   }

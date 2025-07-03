@@ -46,8 +46,9 @@ const AddFixedDeposit = () => {
         console.log('API Response:', data); // Log to check response structure
 
         // Access nested array and map the user names
-        if (data?.data?.data) {
-          const userNames = data.data.data.map((user) => ({ label: user.name }));
+        if (data?.data) {
+          const userNames = data.data.map((user) => ({ label: user.name, id: user._id }));
+
           setTop100Films(userNames);
         } else {
           throw new Error('Unexpected response structure');
@@ -259,9 +260,9 @@ const AddFixedDeposit = () => {
               />
             )}
             onChange={(event, newValue) => {
-              if (index === 0) setNominee1Id(newValue?.label || '');
-              if (index === 1) setNominee2Id(newValue?.label || '');
-              if (index === 2) setNominee3Id(newValue?.label || '');
+              if (index === 0) setNominee1Id(newValue?.id || '');
+              if (index === 1) setNominee2Id(newValue?.id || '');
+              if (index === 2) setNominee3Id(newValue?.id || '');
             }}
             componentsProps={{
               paper: {
@@ -278,7 +279,7 @@ const AddFixedDeposit = () => {
             disablePortal
             options={top100Films}
             renderInput={(params) => <TextField {...params} label="Holder Name" />}
-            onChange={(event, newValue) => setHolderId(newValue?.label || '')}
+            onChange={(event, newValue) => setHolderId(newValue?.id || '')}
             componentsProps={{
               paper: {
                 sx: {

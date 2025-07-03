@@ -99,8 +99,8 @@ const EditMutualFund = () => {
               Authorization: `Bearer ${token}`
           },
         } );
-        if (usersResponse.data?.data?.data) {
-          setUsers(usersResponse.data.data.data);
+        if (usersResponse.data?.data) {
+          setUsers(usersResponse.data.data);
         }
 
         // Fetch mutual fund data if editing

@@ -63,8 +63,9 @@ const AddPolicy = () => {
           },
         });
         const data = await response.json();
-        if (data?.data?.data) {
-          setUsers(data.data.data);
+        console.log(data)
+        if (data?.data) {
+          setUsers(data.data);
         }
       } catch (error) {
         console.error('Error fetching users:', error);

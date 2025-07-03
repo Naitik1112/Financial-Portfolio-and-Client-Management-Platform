@@ -120,8 +120,8 @@ const AddGeneral = () => {
            // Log to check response structure
   
           // Access nested array and map the user names
-          if (data?.data?.data) {
-            const userNames = data.data.data.map((user) => ({ label: user.name }));
+          if (data?.data) {
+            const userNames = data.data.map((user) => ({ label: user.name , id: user._id}));
             setTop100Films(userNames);
           } else {
             throw new Error('Unexpected response structure');
@@ -166,7 +166,7 @@ const AddGeneral = () => {
           })),
           type,
           clientId,
-          nominee1ID: nominee1Id,
+          // nominee1ID: nominee1Id,
           vehicleID: vehicleId,
           policyName: policyName,
           companyName: companyName,
@@ -224,7 +224,7 @@ const AddGeneral = () => {
   
       <Box sx={{display: 'flex',flexDirection: 'column',gap: 2,width: '45ch',}}>
         <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Holder Name" />}
-          onChange={(event, newValue) => setClientId(newValue?.label || '')}
+          onChange={(event, newValue) => setClientId(newValue?.id || '')}
           componentsProps={{
             paper: {
               sx: {
@@ -234,8 +234,8 @@ const AddGeneral = () => {
             },
           }}
         />
-        <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 1" />}
-          onChange={(event, newValue) => setNominee1Id(newValue?.label || '')}
+        {/* <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 1" />}
+          onChange={(event, newValue) => setNominee1Id(newValue?.id || '')}
           componentsProps={{
             paper: {
               sx: {
@@ -244,7 +244,7 @@ const AddGeneral = () => {
               },
             },
           }}
-        />
+        /> */}
         <TextField id="vehicle N.o" label="Vehicle N.o" onChange={(e) => setvehicleId(e.target.value)} variant="outlined"
           sx={inputStyles}
         />

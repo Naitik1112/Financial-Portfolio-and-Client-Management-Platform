@@ -91,6 +91,7 @@ const calculateTax = (
 };
 
 exports.redeemUnits = catchAsync(async (req, res, next) => {
+  const now = new Date();
   const redemptionMap = req.body; // { mfId1: "100", mfId2: "200" }
   const taxSummary = [];
 
@@ -146,7 +147,7 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
         { _id: mfId },
         {
           $inc: { redeemedUnits: unitsToRedeem },
-          $set: { lastRedemptionDate: now }, 
+          $set: { lastRedemptionDate: now },
           $push: {
             redemptions: {
               date: new Date(),
@@ -205,7 +206,7 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
           { _id: mfId },
           { $set: { lastRedemptionDate: new Date() } }
         );
-        
+
         unitsToRedeem -= redeemNow;
       }
 
