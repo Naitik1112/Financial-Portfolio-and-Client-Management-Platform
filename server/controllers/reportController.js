@@ -436,7 +436,7 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
       const investment = parseFloat(scheme.totalInvested);
       totalWeightedCAGR += investment * parseFloat(scheme.cagr);
     });
-    const weightedAvgCAGR =
+    const weightedAverageCAGR =
       totalInvested > 0 ? totalWeightedCAGR / totalInvested : 0;
 
     // Prepare the extras object for PDF generation
@@ -466,10 +466,10 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
         totalInvested: totalInvested.toFixed(2),
         currentValue: totalCurrentValue.toFixed(2)
       },
-      weightedAverage: weightedAvgCAGR.toFixed(2),
+      weightedAverage: weightedAverageCAGR.toFixed(2),
       grandTotal: {
-        weightedAvgAnnualReturn: weightedAvgCAGR.toFixed(2),
-        weightedAvgAbsReturn: totalGrowthPercentage.toFixed(2),
+        weightedAverageAnnualReturn: `${weightedAverageCAGR.toFixed(2)} %`,
+        weightedAverageAbsoluteluteReturn: `${totalGrowthPercentage.toFixed(2)} %`,
         unrealisedGainLoss: totalGrowth.toFixed(2),
         currentValue: totalCurrentValue.toFixed(2),
         currency: ''
@@ -523,32 +523,21 @@ exports.getSchemeByClient = CatchAsync(async (req, res) => {
         );
       }
       console.log(extras);
-    } else if (format === 'excel') {
+    } else if (req.format === 'excel') {
       const excelPath = path.join(__dirname, 'transactions_report.xlsx');
-      if (req.body.email) {
-        await generateExcel(
-          formattedSchemes,
-          excelPath,
-          res,
-          fields,
-          reportTitle + '.xlsx',
-          // reportDate,
-          clientName,
-          req.body.email,
-          req.body.title,
-          req.body.description
-        );
-      } else {
-        await generateExcel(
-          formattedSchemes,
-          excelPath,
-          res,
-          fields,
-          reportTitle + '.xlsx',
-          // reportDate,
-          clientName
-        );
-      }
+      await generateExcel(
+        formattedSchemes,
+        excelPath,
+        res,
+        fields,
+        reportTitle + '.xlsx',
+        // reportDate,
+        clientName,
+        req.body.email,
+        req.body.title,
+        req.body.description,
+        extras
+      );
     } else {
       res.status(200).json({
         status: 'success',
@@ -786,8 +775,8 @@ exports.getSchemeValuationByClient = CatchAsync(async (req, res) => {
         currentAmount: totalCurrentValue.toFixed(2)
       },
       grandTotal: {
-        weightedAvgAnnualReturn: xirr.toFixed(2),
-        weightedAvgAbsReturn: (
+        weightedAverageAnnualReturn: xirr.toFixed(2),
+        weightedAverageAbsoluteReturn: (
           (totalCurrentValue / totalInvested - 1) *
           100
         ).toFixed(2),
@@ -1272,8 +1261,8 @@ exports.getDebtsByClient = CatchAsync(async (req, res) => {
   });
 
   // Calculate averages
-  const avgInterestRate = (totalInterestRate / policies.length).toFixed(2);
-  const avgGrowthPercentage = (
+  const AverageInterestRate = (totalInterestRate / policies.length).toFixed(2);
+  const AverageGrowthPercentage = (
     ((totalMaturity - totalInvested) / totalInvested) *
     100
   ).toFixed(2);
@@ -1309,10 +1298,10 @@ exports.getDebtsByClient = CatchAsync(async (req, res) => {
       (((maturityAmount - policy.amount) / policy.amount) * 100);
   });
 
-  const weightedAvgInterestRate = (weightedInterestSum / totalInvested).toFixed(
+  const weightedAverageInterestRate = (weightedInterestSum / totalInvested).toFixed(
     2
   );
-  const weightedAvgGrowthPercentage = (
+  const weightedAverageGrowthPercentage = (
     weightedGrowthSum / totalInvested
   ).toFixed(2);
 
@@ -1324,8 +1313,8 @@ exports.getDebtsByClient = CatchAsync(async (req, res) => {
       totalInvested: totalInvested.toFixed(2),
       totalMaturity: totalMaturity.toFixed(2),
       totalGrowth: totalGrowthAmount.toFixed(2),
-      weightedAvgInterestRate, // Changed from avgInterestRate
-      weightedAvgGrowthPercentage // Changed from avgGrowthPercentage
+      weightedAverageInterestRate, // Changed from AverageInterestRate
+      weightedAverageGrowthPercentage // Changed from AverageGrowthPercentage
     },
     summaryMetrics: {
       amount: totalInvested.toLocaleString('en-IN', {
@@ -1340,8 +1329,8 @@ exports.getDebtsByClient = CatchAsync(async (req, res) => {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       }),
-      weightedAvgInterestRate: `${weightedAvgInterestRate}%`, // Changed
-      weightedAvgGrowthPercentage: `${weightedAvgGrowthPercentage}%` // Changed
+      weightedAverageInterestRate: `${weightedAverageInterestRate}%`, // Changed
+      weightedAverageGrowthPercentage: `${weightedAverageGrowthPercentage}%` // Changed
     }
   };
 

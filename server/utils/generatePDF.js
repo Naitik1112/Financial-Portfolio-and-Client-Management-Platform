@@ -44,7 +44,7 @@ const generatePDF = async (
 
     // Constants for layout
     const PAGE_WIDTH = doc.page.width - 60; // 30px margins on each side
-    const CURRENCY_SYMBOL = '₹';
+    const CURRENCY_SYMBOL = '';
     const FIXED_HEADER_HEIGHT = 34;
 
     // Title

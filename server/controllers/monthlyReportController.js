@@ -83,8 +83,6 @@ exports.getMonthlyPremiumData = catchAsync(async (req, res) => {
     companyName: generalPolicies.companyName,
     holderName: generalPolicies.clientId?.name || null,
     nominee1Name: generalPolicies.nominee1ID?.name || null,
-    nominee2Name: generalPolicies.nominee2ID?.name || null,
-    nominee3Name: generalPolicies.nominee3ID?.name || null,
     startPremiumDate: generalPolicies.startPremiumDate.toLocaleDateString(
       'en-GB'
     ),
@@ -106,26 +104,47 @@ exports.getMonthlyPremiumData = catchAsync(async (req, res) => {
       policyType: 'General' // New field to indicate policy type
     }))
   ];
-  // console.log(lifePolicies[0].clientId);
-  // console.log(lifePolicies[0].clientId.name);
-  // console.log(lifePolicies);
-  // console.log(formattedLifePolicies);
-  // console.log(mergedPolicies);
+
+  // Calculate investment summary
+  const uniqueClientIds = new Set();
+
+  // Add all client IDs from life policies
+  lifePolicies.forEach(policy => {
+    if (policy.clientId) {
+      uniqueClientIds.add(policy.clientId._id.toString());
+    }
+  });
+
+  // Add all client IDs from general policies
+  generalPolicies.forEach(policy => {
+    if (policy.clientId) {
+      uniqueClientIds.add(policy.clientId._id.toString());
+    }
+  });
+
+  const numberOfClients = uniqueClientIds.size;
+
+  // Create extras with investment summary
+  const extras = {
+    investmentSummary: {
+      numberOfClients: numberOfClients,
+      totalLifePolicies: lifePolicies.length,
+      totalGeneralPolicies: generalPolicies.length,
+      totalPolicies: lifePolicies.length + generalPolicies.length
+    }
+  };
 
   const lifeInsuranceFields = [
     { label: 'Policy Number', value: 'policyNumber' },
     { label: 'Policy Name', value: 'policyName' },
-    { label: 'Company Name', value: 'companyName' },
+    { label: 'Holder Name', value: 'holderName' },
     { label: 'Start Date', value: 'startPremiumDate' },
     { label: 'End Date', value: 'endPremiumDate' },
     { label: 'Maturity Date', value: 'maturityDate' },
     { label: 'Policy Type', value: 'policyType' },
     { label: 'Type', value: 'type' },
     { label: 'Premium', value: 'premium' },
-    { label: 'Holder Name', value: 'holderName' },
-    { label: 'Nominee 1', value: 'nominee1Name' },
-    { label: 'Nominee 2', value: 'nominee2Name' },
-    { label: 'Nominee 3', value: 'nominee3Name' }
+    { label: 'Nominee 1', value: 'nominee1Name' }
   ];
 
   if (format === 'pdf') {
@@ -137,7 +156,11 @@ exports.getMonthlyPremiumData = catchAsync(async (req, res) => {
       res,
       lifeInsuranceFields,
       'Renewal report',
-      'N/A'
+      'N/A',
+      req.body.email,
+      req.body.title,
+      req.body.description,
+      extras // Pass extras to the PDF generator
     );
   } else if (format === 'excel') {
     // Create and send an Excel file
@@ -148,12 +171,18 @@ exports.getMonthlyPremiumData = catchAsync(async (req, res) => {
       res,
       lifeInsuranceFields,
       'Renewal report',
-      'N/A'
+      'N/A',
+      req.body.email,
+      req.body.title,
+      req.body.description,
+      extras // Pass extras to the Excel generator
     );
   } else {
-    return res.status(400).json({
-      status: 'fail',
-      message: 'Invalid format. Specify "pdf" or "excel".'
+    // If format is not specified, return JSON with extras
+    return res.status(200).json({
+      status: 'success',
+      data: mergedPolicies,
+      extras: extras
     });
   }
 });
