@@ -17,7 +17,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-
+import { useMemo } from 'react';
 import { getStyles } from "../styles/themeStyles";
 import { useThemeMode } from "../context/ThemeContext";
 
@@ -51,8 +51,7 @@ const EditMutualFund = () => {
     lumpsumDate: null,
     lumpsumUnits: 0,
     // Common fields
-    nominee1Id: '',
-    nominee2Id: ''
+    nominee1Id: ''
   });
 
   const [users, setUsers] = useState([]);
@@ -100,7 +99,10 @@ const EditMutualFund = () => {
           },
         } );
         if (usersResponse.data?.data) {
-          setUsers(usersResponse.data.data);
+          setUsers(usersResponse.data.data.map((user) => ({
+            label: user.name,
+            id: user._id
+          })));
         }
 
         // Fetch mutual fund data if editing
@@ -141,7 +143,6 @@ const EditMutualFund = () => {
             investmentType: mfData.investmentType || 'sip',
             holderId: mfData.holderId?._id || '',
             nominee1Id: mfData.nominee1Id?._id || '',
-            nominee2Id: mfData.nominee2Id?._id || '',
             // SIP fields
             sipAmount: mfData.sipAmount || '',
             sipDay: mfData.sipDay || 1,
@@ -214,66 +215,47 @@ const EditMutualFund = () => {
     setIsSubmitting(true);
     setError('');
 
-    // Validate required fields based on investment type
-    let missingFields = [];
-    const commonRequiredFields = {
-      AMFI: 'AMFI code',
-      schemeName: 'Scheme name',
-      fundHouse: 'Fund house',
-      holderId: 'Holder'
-    };
+    const payload = { sipStatus: 'inactive' };
 
-    if (formData.investmentType === 'sip') {
-      missingFields = [
-        ...Object.entries(commonRequiredFields),
-        ['sipAmount', 'SIP Amount'],
-        ['sipDay', 'SIP Day'],
-        ['sipStartDate', 'Start Date'],
-        ['sipStatus', 'SIP Status']
-      ].filter(([key]) => !formData[key])
-       .map(([, name]) => name);
-    } else {
-      missingFields = [
-        ...Object.entries(commonRequiredFields),
-        ['lumpsumAmount', 'Lumpsum Amount'],
-        ['lumpsumDate', 'Lumpsum Date']
-      ].filter(([key]) => !formData[key])
-       .map(([, name]) => name);
-    }
-
-    if (missingFields.length > 0) {
-      setError(`Please fill in all required fields: ${missingFields.join(', ')}`);
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Prepare payload
-    const payload = {
-      ...formData,
-      holderId: formData.holderId,
-      nominee1Id: formData.nominee1Id,
-      nominee2Id: formData.nominee2Id,
-      sipStartDate: formData.sipStartDate?.format('YYYY-MM-DD'),
-      sipEndDate: formData.sipEndDate?.format('YYYY-MM-DD'),
-      lumpsumDate: formData.lumpsumDate?.format('YYYY-MM-DD')
-    };
-    
     try {
-      const response = await axios.patch(`/api/v1/mutualFunds/${id}`, payload);
-      
+      const response = await axios.patch(
+        `${backendURL}/api/v1/mutualFunds/${id}`,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
       if (response.status === 200) {
-        alert('Mutual fund updated successfully!');
+        alert('SIP status updated to Inactive!');
         window.location.reload();
       } else {
-        throw new Error(response.data.message || 'Failed to update mutual fund');
+        throw new Error(response.data.message || 'Failed to update SIP status');
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      setError(error.response?.data?.message || 'Failed to update mutual fund. Please try again.');
+      setError(error.response?.data?.message || 'Failed to update. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const selectedUser = users.find(user => user.id === formData.holderId);
+  const clientName = useMemo(() => {
+    return users.find(user => user.id === formData.holderId)?.label || formData.holderId;
+  }, [users, formData.holderId]);
+
+  const schemeLabel = useMemo(() => {
+    return formData.schemeName?.split(' - ')[0] || 'N/A';
+  }, [formData.schemeName]);
+
+  const schemeFullName = useMemo(() => {
+    return formData.schemeName || 'N/A';
+  }, [formData.schemeName]);
+
 
   return (
     <Box sx={{
@@ -293,7 +275,7 @@ const EditMutualFund = () => {
         textAlign: 'center',
         marginBottom: '0px',
       }}>
-        Edit Mutual Fund
+        {schemeLabel} of {clientName}
       </Typography>
 
       {error && (
@@ -310,9 +292,7 @@ const EditMutualFund = () => {
         {/* Left Column - Common Fields */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '45ch' }}>
           <Autocomplete
-            options={allSchemes}
-            getOptionLabel={(option) => option.schemeName}
-            value={allSchemes.find((s) => s.schemeName === formData.schemeName) || null}
+            value={schemeFullName || null}
             onChange={(_, selected) => {
               if (selected) {
                 const fundHouse = selected.schemeName.includes('-')
@@ -344,6 +324,7 @@ const EditMutualFund = () => {
                 },
               },
             }}
+            readOnly
           />
                     
           <Autocomplete
@@ -365,9 +346,9 @@ const EditMutualFund = () => {
           
           <Autocomplete
             options={users}
-            getOptionLabel={(user) => user.name}
-            value={users.find(user => user._id === formData.holderId) || null}
-            onChange={(_, newValue) => handleChange('holderId', newValue?._id || '')}
+            getOptionLabel={(user) => user.label || ''}
+            value={users.find(user => user.id === formData.holderId) || null}
+            onChange={(_, newValue) => handleChange('holderId', newValue?.id || '')}
             renderInput={(params) => <TextField {...params} label="Holder" />}
             sx={inputStyles}
             componentsProps={{
@@ -378,6 +359,7 @@ const EditMutualFund = () => {
                 },
               },
             }}
+            readOnly
           />
 
           {formData.investmentType === 'sip' ? (
@@ -387,6 +369,7 @@ const EditMutualFund = () => {
               type="number"
               value={formData.sipAmount}
               onChange={(e) => handleChange('sipAmount', e.target.value)}
+              InputProps={{ readOnly: true }}
               sx={inputStyles}
             />
           ) : (
@@ -396,6 +379,7 @@ const EditMutualFund = () => {
               type="number"
               value={formData.lumpsumAmount}
               onChange={(e) => handleChange('lumpsumAmount', e.target.value)}
+              InputProps={{ readOnly: true }}
               sx={inputStyles}
             />
           )}
@@ -414,7 +398,7 @@ const EditMutualFund = () => {
                   const day = Math.min(31, Math.max(1, parseInt(e.target.value) || 1));
                   handleChange('sipDay', day);
                 }}
-                inputProps={{ min: 1, max: 31 }}
+                InputProps={{ min: 1, max: 31,readOnly: true }}
                 sx={inputStyles}
               />
 
@@ -423,6 +407,7 @@ const EditMutualFund = () => {
                   label="Start Date"
                   value={formData.sipStartDate}
                   onChange={(newValue) => handleChange('sipStartDate', newValue)}
+                  InputProps={{ readOnly: true }}
                   sx={inputStyles}
                 />
               </LocalizationProvider>
@@ -442,6 +427,7 @@ const EditMutualFund = () => {
                     },
                   },
                 }}
+                readOnly
               />
               
               {formData.sipStatus === 'inactive' && (
@@ -450,6 +436,7 @@ const EditMutualFund = () => {
                     label="End Date"
                     value={formData.sipEndDate}
                     onChange={(newValue) => handleChange('sipEndDate', newValue)}
+                    InputProps={{ readOnly: true }}
                     sx={inputStyles}
                   />
                 </LocalizationProvider>
@@ -461,6 +448,7 @@ const EditMutualFund = () => {
                 label="Investment Date"
                 value={formData.lumpsumDate}
                 onChange={(newValue) => handleChange('lumpsumDate', newValue)}
+                InputProps={{ readOnly: true }}
                 sx={inputStyles}
               />
             </LocalizationProvider>
@@ -468,9 +456,9 @@ const EditMutualFund = () => {
 
           <Autocomplete
             options={users}
-            getOptionLabel={(user) => user.name}
-            value={users.find(user => user._id === formData.nominee1Id) || null}
-            onChange={(_, newValue) => handleChange('nominee1Id', newValue?._id || '')}
+            getOptionLabel={(user) => user.label}
+            value={users.find(user => user.id === formData.nominee1Id) || null}
+            onChange={(_, newValue) => handleChange('nominee1Id', newValue?.id || '')}
             renderInput={(params) => <TextField {...params} label="Nominee 1" />}
             sx={inputStyles}
             componentsProps={{
@@ -481,36 +469,23 @@ const EditMutualFund = () => {
                 },
               },
             }}
-          />
-
-          <Autocomplete
-            options={users}
-            getOptionLabel={(user) => user.name}
-            value={users.find(user => user._id === formData.nominee2Id) || null}
-            onChange={(_, newValue) => handleChange('nominee2Id', newValue?._id || '')}
-            renderInput={(params) => <TextField {...params} label="Nominee 2" />}
-            sx={inputStyles}
-            componentsProps={{
-              paper: {
-                sx: {
-                  bgcolor: "grey",
-                  color: "black",
-                },
-              },
-            }}
+            readOnly
           />
         </Box>
       </Box>
 
-      <Button 
-        size="large" 
-        variant="contained" 
-        onClick={handleSubmit}
-        disabled={isSubmitting}
-        sx={buttonStyles}
-      >
-        {isSubmitting ? 'Updating...' : 'Update Details'}
-      </Button>
+      {formData.sipStatus === 'active' && (
+        <Button 
+          size="large" 
+          variant="contained" 
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          sx={buttonStyles}
+        >
+          {isSubmitting ? 'Updating...' : 'Mark as Inactive'}
+        </Button>
+      )}
+
 
       {/* Transactions Section - Only for SIP */}
       {formData.investmentType === 'sip' && formData.sipTransactions.length > 0 && (
@@ -519,7 +494,7 @@ const EditMutualFund = () => {
             SIP Transactions
           </Typography>
 
-          <TableContainer component={Paper} sx={{ backgroundColor: '#1e1e1e', borderRadius: 2 }}>
+          <TableContainer component={Paper} sx={{ backgroundColor: '#1e1e1e', borderRadius: 2, maxHeight: '300px', overflowY: 'auto' }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#2c2c2c' }}>
@@ -557,7 +532,7 @@ const EditMutualFund = () => {
             Redemptions
           </Typography>
 
-          <TableContainer component={Paper} sx={{ backgroundColor: '#1e1e1e', borderRadius: 2 }}>
+          <TableContainer component={Paper} sx={{ backgroundColor: '#1e1e1e', borderRadius: 2, maxHeight: '300px', overflowY: 'auto' }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#2c2c2c' }}>

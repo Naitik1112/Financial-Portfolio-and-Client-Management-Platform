@@ -204,9 +204,9 @@ const AddGeneral = () => {
 
         const formattedPolicyData = {
           ...policyData,
-          startPremiumDate: startPremiumDate
-            ? dayjs(startPremiumDate).format('YYYY-MM-DDT00:00:00.000Z')
-            : null,
+          // startPremiumDate: startPremiumDate
+          //   ? dayjs(startPremiumDate).format('YYYY-MM-DDT00:00:00.000Z')
+          //   : null,
           claims: claims.map(claim => ({
             ...claim,
             claim: parseInt(claim.claim,10),
@@ -260,15 +260,17 @@ const AddGeneral = () => {
       <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between',  gap: 4, width: '100%', }}>
         <Box sx={{ display: 'flex',flexDirection: 'column',gap: 2,width: '45ch',}}>
         <TextField id="outlined-basic-1" label="Policy Number" value={policyNumber} variant="outlined" onChange={(e) => setPolicyNumber(e.target.value)}
-          sx={inputStyles}/>
+          sx={inputStyles} InputProps={{ readOnly: true }}/>
         <TextField id="outlined-basic-4" label="Policy Name" value={policyName} variant="outlined" onChange={(e) => setPolicyName(e.target.value)}
           sx={inputStyles}
+          InputProps={{ readOnly: true }}
         />
         <TextField id="outlined-basic-5" label="Company Name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} variant="outlined"
           sx={inputStyles}
+          InputProps={{ readOnly: true }}
         />
         <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <DatePicker sx={inputStyles} label="Starting Date" value={startPremiumDate} onChange={(date) => setStartPremiumDate(date ? date.toISOString() : '')} />
+          <DatePicker sx={inputStyles} InputProps={{ readOnly: true }} label="Starting Date" value={startPremiumDate} onChange={(date) => setStartPremiumDate(date ? date.toISOString() : '')} />
         </LocalizationProvider>
       </Box>
   
@@ -289,10 +291,11 @@ const AddGeneral = () => {
               },
             },
           }}
+          readOnly
         />
 
         <TextField id="vehicle N.o" label="Vehicle N.o" onChange={(e) => setvehicleId(e.target.value)} variant="outlined"
-          value={vehicleId} sx={inputStyles}
+          value={vehicleId} sx={inputStyles} InputProps={{ readOnly: true }}
         />
         <Autocomplete sx={inputStyles} disablePortal options={typelabels} renderInput={(params) => <TextField {...params} label="Type" />}
           value={type} onChange={(event, newValue) => setType(newValue?.label || '')}
@@ -304,6 +307,7 @@ const AddGeneral = () => {
               },
             },
           }}
+          readOnly
         />
       </Box>
     </Box>

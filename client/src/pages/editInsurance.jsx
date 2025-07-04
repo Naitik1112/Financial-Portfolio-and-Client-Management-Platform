@@ -173,15 +173,6 @@ const EditPolicy = () => {
         const formattedPolicyData = {
           ...policyData,
           premium: adjustedPremium, // Updated premium value
-          startPremiumDate: startPremiumDate
-            ? dayjs(startPremiumDate).format('YYYY-MM-DDT00:00:00.000Z')
-            : null,
-          endPremiumDate: endPremiumDate
-            ? dayjs(endPremiumDate).format('YYYY-MM-DDT00:00:00.000Z')
-            : null,
-          maturityDate: maturityDate
-            ? dayjs(maturityDate).format('YYYY-MM-DDT00:00:00.000Z')
-            : null,
           claim: claims.map((c) => ({
             year: parseInt(c.year, 10),
             claim: parseFloat(c.claim),
@@ -231,27 +222,34 @@ const EditPolicy = () => {
       <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between',  gap: 4, width: '100%', }}>
         <Box sx={{ display: 'flex',flexDirection: 'column',gap: 2,width: '45ch',}}>
         <TextField id="outlined-basic-1" label="Policy Number" variant="outlined" value={policyNumber} onChange={(e) => setPolicyNumber(e.target.value)}
-          sx={inputStyles}/>
+          sx={inputStyles} InputProps={{ readOnly: true }}/>
         <TextField id="outlined-basic-4" label="Policy Name" variant="outlined" value={policyName} onChange={(e) => setPolicyName(e.target.value)}
           sx={inputStyles}
+          InputProps={{ readOnly: true }}
         />
         <TextField id="outlined-basic-5" label="Fund House" value={companyName} onChange={(e) => setCompanyName(e.target.value)} variant="outlined"
-          sx={inputStyles}
+          sx={inputStyles} InputProps={{ readOnly: true }}
         />
         <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <DatePicker sx={inputStyles} label="Starting Date" value={startPremiumDate} onChange={setStartPremiumDate} />
+          <DatePicker sx={inputStyles} renderInput={(params) => (
+            <TextField {...params} InputProps={{ ...params.InputProps, readOnly: true }} sx={inputStyles} />
+          )} label="Starting Date" value={startPremiumDate} onChange={setStartPremiumDate} />
         </LocalizationProvider>
         <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <DatePicker sx={inputStyles} label="Maturity Date" value={maturityDate} onChange={setMaturityDate} />
+          <DatePicker sx={inputStyles} renderInput={(params) => (
+            <TextField {...params} InputProps={{ ...params.InputProps, readOnly: true }} sx={inputStyles} />
+          )} label="Maturity Date" value={maturityDate} onChange={setMaturityDate} />
         </LocalizationProvider>
         <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <DatePicker sx={inputStyles} label="Ending Date" value={endPremiumDate} onChange={setEndPremiumDate}/>
+          <DatePicker sx={inputStyles} renderInput={(params) => (
+            <TextField {...params} InputProps={{ ...params.InputProps, readOnly: true }} sx={inputStyles} />
+          )} label="Ending Date" value={endPremiumDate} onChange={setEndPremiumDate}/>
         </LocalizationProvider>
       </Box>
   
       <Box sx={{display: 'flex',flexDirection: 'column',gap: 2,width: '45ch',}}>
         <TextField id="outlined-basic-2" label="Premium" type="number" variant="outlined" value={premium} onChange={(e) => setPremium(e.target.value)}
-            sx={inputStyles}/>
+            sx={inputStyles} InputProps={{ readOnly: true }}/>
         <Autocomplete sx={inputStyles} disablePortal options={type} renderInput={(params) => <TextField {...params} label="Mode" />} componentsProps={{
             paper: {
               sx: {
@@ -261,6 +259,7 @@ const EditPolicy = () => {
             },
           }}
           value={mode} onChange={(event, newValue) => setMode(newValue?.label || '')}
+          readOnly
         />
         <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Holder Name" />} componentsProps={{
             paper: {
@@ -272,6 +271,7 @@ const EditPolicy = () => {
           }}
           value={top100Films.find((option) => option.id === clientId) || null}
           onChange={(event, newValue) => setClientId(newValue?.id || '')}
+          readOnly
         />
         <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 1" />} componentsProps={{
             paper: {
@@ -283,6 +283,7 @@ const EditPolicy = () => {
           }}
           value={top100Films.find((option) => option.id === nominee1Id) || null}
           onChange={(event, newValue) => setNominee1Id(newValue?.id || '')}
+          readOnly
         />
         <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 2" />} componentsProps={{
             paper: {
@@ -294,6 +295,7 @@ const EditPolicy = () => {
           }}
           value={top100Films.find((option) => option.id === nominee2Id) || null}
           onChange={(event, newValue) => setNominee2Id(newValue?.id || '')}
+          readOnly
         />
         <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 3" />} componentsProps={{
             paper: {
@@ -305,6 +307,7 @@ const EditPolicy = () => {
           }}
           value={top100Films.find((option) => option.id === nominee3Id) || null}
           onChange={(event, newValue) => setNominee3Id(newValue?.id || '')}
+          readOnly
         />
         
       </Box>
@@ -323,9 +326,10 @@ const EditPolicy = () => {
             value={pendingClaimYears}
             onChange={handlePendingClaimYearsChange}
             sx={inputStyles}
+            InputProps={{ readOnly: true }}
         />
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column',alignItems:'left',justifyContent:"center",  width: '30%' }}> 
+        {/* <Box sx={{ display: 'flex', flexDirection: 'column',alignItems:'left',justifyContent:"center",  width: '30%' }}> 
           <Button size="large"
             sx={{ 
               color: '#000', 
@@ -335,7 +339,7 @@ const EditPolicy = () => {
             }} onClick={handleApplyChanges}>
               SHOW
           </Button>
-        </Box>
+        </Box> */}
       </Box>
 
       <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 4, width: '100%' }}>
@@ -348,6 +352,7 @@ const EditPolicy = () => {
                 value={claim.year}
                 onChange={(e) => handleClaimChange(index, 'year', e.target.value)}
                 sx={inputStyles}
+                InputProps={{ readOnly: true }}
               />
               <TextField
                 label="Claim"
@@ -355,6 +360,7 @@ const EditPolicy = () => {
                 value={claim.claim}
                 onChange={(e) => handleClaimChange(index, 'claim', e.target.value)}
                 sx={inputStyles}
+                InputProps={{ readOnly: true }}
               />
             </Box>
           ))}
@@ -369,6 +375,7 @@ const EditPolicy = () => {
                 type='number'
                 onChange={(e) => handleClaimChange(index + Math.ceil(claimYears / 2), 'year', e.target.value)}
                 sx={inputStyles}
+                InputProps={{ readOnly: true }}
               />
               <TextField
                 label="Claim"
@@ -376,6 +383,7 @@ const EditPolicy = () => {
                 type='number'
                 onChange={(e) => handleClaimChange(index + Math.ceil(claimYears / 2), 'claim', e.target.value)}
                 sx={inputStyles}
+                InputProps={{ readOnly: true }}
               />
             </Box>
           ))}
@@ -411,7 +419,7 @@ const EditPolicy = () => {
       ...buttonStyles
     }}
     variant="contained" color="success" onClick={handleSubmit}>
-        Update
+        Update Death Claim
     </Button>
     </Box>
   );

@@ -20,6 +20,10 @@ const debtRouter = require('./routes/debtRoutes');
 const dashboardRouter = require('./routes/dashboardRoutes');
 const groupRouter = require('./routes/groupRoutes');
 const globalErrorHandler = require('./controllers/errorController');
+// In app.js or wherever your routes are registered
+const snapshotRoutes = require('./routes/snapshotRoutes');
+
+
 
 const app = express();
 
@@ -98,6 +102,7 @@ app.use((req, res, next) => {
   next();
 });
 
+
 // 3) ROUTES
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/lifeInsurance', lifeInsuranceRouter);
@@ -107,6 +112,7 @@ app.use('/api/v1/reports', reportRouter);
 app.use('/api/v1/debt', debtRouter);
 app.use('/api/v1/dashboard', dashboardRouter);
 app.use('/api/v1/group', groupRouter);
+app.use('/api/v1/snapshot', snapshotRoutes);
 // app.use('/', viewRouter);
 // app.use('/api/v1/tours', tourRouter);
 // app.use('/api/v1/reviews', reviewRouter);

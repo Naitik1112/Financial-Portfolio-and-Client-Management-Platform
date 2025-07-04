@@ -342,160 +342,247 @@ mfSchema.pre('save', function(next) {
 
 // Enhanced update middleware
 // Enhanced update middleware
+// async function handleUpdates(next) {
+//   try {
+//     // Skip if this is a new document or if hooks are skipped
+//     if (this.isNew || this._skipHooks) {
+//       return next();
+//     }
+
+//     // Get the update operation and document being updated
+//     const update = this.getUpdate ? this.getUpdate() : {};
+//     const doc = await this.model.findOne(
+//       this.getQuery ? this.getQuery() : this._conditions
+//     );
+
+//     console.log('Model update runned');
+//     console.log('Update object:', update);
+//     // console.log('Existing doc:', doc);
+
+//     // Skip if no document found or no meaningful update
+//     if (!doc || (!update.$set && !update.$setOnInsert)) {
+//       return next();
+//     }
+
+//     // Process redemptions dates
+//     let dates = [];
+//     if (Array.isArray(doc.redemptions)) {
+//       dates = dates.concat(doc.redemptions.map(r => r.date));
+//     }
+
+//     if (Array.isArray(doc.sipTransactions)) {
+//       for (const txn of doc.sipTransactions) {
+//         if (Array.isArray(txn.redemptions)) {
+//           dates = dates.concat(txn.redemptions.map(r => r.date));
+//         }
+//       }
+//     }
+
+//     // Update lastRedemptionDate
+//     if (dates.length > 0) {
+//       update.$set = update.$set || {};
+//       update.$set.lastRedemptionDate = new Date(
+//         Math.max(...dates.map(d => new Date(d)))
+//       );
+//     }
+
+//     // Check if we should compute new transactions
+//     const updateFields = update || {};
+//     console.log('update fields', updateFields);
+//     const shouldComputeTransactions =
+//       // SIP conditions
+//       (updateFields.AMFI && updateFields.AMFI !== doc.AMFI) ||
+//       (updateFields.sipAmount && updateFields.sipAmount !== doc.sipAmount) ||
+//       (updateFields.sipStartDate &&
+//         new Date(updateFields.sipStartDate).getTime() !==
+//           doc.sipStartDate.getTime()) ||
+//       (updateFields.sipDay && updateFields.sipDay !== doc.sipDay) ||
+//       (updateFields.sipStatus && updateFields.sipStatus !== doc.sipStatus) ||
+//       (updateFields.sipEndDate &&
+//         new Date(updateFields.sipEndDate).getTime() !==
+//           (doc.sipEndDate?.getTime() || 0)) ||
+//       // Lumpsum conditions
+//       (updateFields.lumpsumAmount &&
+//         updateFields.lumpsumAmount !== doc.lumpsumAmount) ||
+//       (updateFields.lumpsumDate &&
+//         new Date(updateFields.lumpsumDate).getTime() !==
+//           doc.lumpsumDate.getTime());
+
+//     console.log('Should compute transactions:', shouldComputeTransactions);
+
+//     if (shouldComputeTransactions && doc.investmentType === 'sip') {
+//       console.log('SIP transaction update started');
+
+//       // Use updated values or fall back to existing values
+//       const AMFI = updateFields.AMFI || doc.AMFI;
+//       const sipAmount = updateFields.sipAmount || doc.sipAmount;
+//       const sipStartDate = updateFields.sipStartDate
+//         ? new Date(updateFields.sipStartDate)
+//         : doc.sipStartDate;
+//       const sipDay = updateFields.sipDay || doc.sipDay;
+//       const sipStatus = updateFields.sipStatus || doc.sipStatus;
+//       const sipEndDate = updateFields.sipEndDate
+//         ? new Date(updateFields.sipEndDate)
+//         : sipStatus === 'inactive'
+//         ? new Date()
+//         : null;
+
+//       // Recalculate all transactions
+//       const transactions = [];
+//       let currentDate = new Date(sipStartDate);
+//       const endDate = sipStatus === 'active' ? new Date() : sipEndDate;
+
+//       while (currentDate <= endDate) {
+//         const sipDate = new Date(currentDate);
+//         sipDate.setDate(sipDay);
+
+//         // Handle months with fewer days than SIP day
+//         if (sipDate.getMonth() !== currentDate.getMonth()) {
+//           sipDate.setDate(0); // Last day of previous month
+//         }
+
+//         if (sipDate >= sipStartDate && sipDate <= endDate) {
+//           try {
+//             const nav = await fetchNAV(AMFI, sipDate);
+
+//             transactions.push({
+//               _id: new mongoose.Types.ObjectId().toHexString(),
+//               date: new Date(sipDate),
+//               amount: Math.round(Number(sipAmount)),
+//               nav: parseFloat(nav),
+//               units: parseFloat((sipAmount / nav).toFixed(8)),
+//               redeemedUnits: 0, // Initialize to 0
+//               redemptions: [] // Initialize empty array
+//             });
+//           } catch (err) {
+//             console.warn(
+//               `Skipping SIP for ${sipDate.toISOString().split('T')[0]}: ${
+//                 err.message
+//               }`
+//             );
+//           }
+//         }
+
+//         // Move to next month
+//         currentDate.setMonth(currentDate.getMonth() + 1);
+//       }
+
+//       // Update transactions and current value
+//       update.$set = update.$set || {};
+//       update.sipTransactions = transactions;
+//       update.$set.lastUpdated = new Date();
+
+//       // Recalculate current value
+//       const currentNAV = await getCurrentNAV(AMFI);
+//       const totalUnits = transactions.reduce((sum, txn) => sum + txn.units, 0);
+//       update.$set.currentValue = totalUnits * currentNAV;
+//     } else if (shouldComputeTransactions && doc.investmentType === 'lumpsum') {
+//       console.log('Lumpsum update started');
+
+//       const hasLumpsumChanges =
+//         (updateFields.AMFI && updateFields.AMFI !== doc.AMFI) ||
+//         (updateFields.lumpsumAmount &&
+//           updateFields.lumpsumAmount !== doc.lumpsumAmount) ||
+//         (updateFields.lumpsumDate &&
+//           new Date(updateFields.lumpsumDate).getTime() !==
+//             doc.lumpsumDate.getTime());
+
+//       if (hasLumpsumChanges) {
+//         const AMFI = updateFields.AMFI || doc.AMFI;
+//         const lumpsumAmount = updateFields.lumpsumAmount || doc.lumpsumAmount;
+//         const lumpsumDate = updateFields.lumpsumDate
+//           ? new Date(updateFields.lumpsumDate)
+//           : doc.lumpsumDate;
+
+//         try {
+//           update.redemptions = [];
+//           update.$set.redeemedUnits = 0;
+//           const navOnLumpsumDate = await fetchNAV(AMFI, lumpsumDate);
+//           const units = parseFloat(
+//             (lumpsumAmount / navOnLumpsumDate).toFixed(8)
+//           );
+
+//           const currentNAV = await getCurrentNAV(AMFI);
+//           const currentValue = parseFloat((units * currentNAV).toFixed(2));
+
+//           update.$set = update.$set || {};
+//           update.$set.lumpsumUnits = units;
+//           update.$set.lastUpdated = new Date();
+//           update.$set.currentValue = currentValue;
+//         } catch (err) {
+//           console.warn(`Failed to update lumpsum details: ${err.message}`);
+//         }
+//       }
+//     }
+
+//     // Apply the updates
+//     if (Object.keys(update.$set || {}).length > 0) {
+//       this.setUpdate(update);
+//     }
+
+//     next();
+//   } catch (err) {
+//     console.error('Error in handleUpdates:', err);
+//     next(err);
+//   }
+// }
+
 async function handleUpdates(next) {
   try {
-    const update = this.getUpdate();
-    const doc = await this.model.findOne(this.getQuery());
-    console.log('Model update runned');
-    let dates = [];
+    if (this.isNew || this._skipHooks) return next();
 
-    if (Array.isArray(this.redemptions)) {
-      dates = dates.concat(this.redemptions.map(r => r.date));
+    const update = this.getUpdate ? this.getUpdate() : {};
+    const doc = await this.model.findOne(this.getQuery ? this.getQuery() : this._conditions);
+    if (!doc) return next();
+
+    // Allowed keys
+    const allowedTopLevelKeys = ['sipStatus'];
+    const allowedSetKeys = ['updatedAt', 'sipEndDate', 'lastUpdated'];
+
+    // Validate top-level keys (excluding $set, $setOnInsert)
+    const topLevelKeys = Object.keys(update).filter(k => !k.startsWith('$'));
+    const hasInvalidTopKeys = topLevelKeys.some(k => !allowedTopLevelKeys.includes(k));
+    if (hasInvalidTopKeys) {
+      return next(new Error('Only "sipStatus" field is allowed to be updated.'));
     }
 
-    if (Array.isArray(this.sipTransactions)) {
-      for (const txn of this.sipTransactions) {
-        if (Array.isArray(txn.redemptions)) {
-          dates = dates.concat(txn.redemptions.map(r => r.date));
-        }
-      }
+    // Validate $set keys if exists
+    const setKeys = Object.keys(update.$set || {});
+    const hasInvalidSetKeys = setKeys.some(k => !allowedSetKeys.includes(k));
+    if (hasInvalidSetKeys) {
+      return next(new Error('Only "sipStatus" and internal timestamp fields can be updated.'));
     }
 
-    this.lastRedemptionDate = dates.length
-      ? new Date(Math.max(...dates.map(d => new Date(d))))
-      : undefined;
+    // Prevent status flip from inactive → active
+    const oldStatus = doc.sipStatus;
+    const newStatus = update.sipStatus;
+    if (oldStatus === 'inactive' && newStatus === 'active') {
+      return next(new Error('Cannot change SIP status from "inactive" to "active".'));
+    }
 
-    update.$set.lastRedemptionDate = latestRedemptionDate;
-    // update.$set.currentValue = 100;
-    console.log(this._skipHooks);
-    if (this._skipHooks) return next();
-    // console.log('In model');
-
-    // Check if we should compute new transactions
-    const shouldComputeTransactions =
-      (update.AMFI && update.AMFI !== doc.AMFI) ||
-      (update.sipAmount && update.sipAmount !== doc.sipAmount) ||
-      (update.sipStartDate &&
-        new Date(update.sipStartDate).getTime() !==
-          doc.sipStartDate.getTime()) ||
-      (update.sipDay && update.sipDay !== doc.sipDay) ||
-      (update.sipStatus && update.sipStatus !== doc.sipStatus) ||
-      (update.sipEndDate &&
-        new Date(update.sipEndDate).getTime() !==
-          (doc.sipEndDate?.getTime() || 0));
-
-    if (shouldComputeTransactions && doc.investmentType === 'sip') {
-      // Use updated values or fall back to existing values
-      const AMFI = update.AMFI || doc.AMFI;
-      const sipAmount = update.sipAmount || doc.sipAmount;
-      const sipStartDate = update.sipStartDate
-        ? new Date(update.sipStartDate)
-        : doc.sipStartDate;
-      const sipDay = update.sipDay || doc.sipDay;
-      const sipStatus = update.sipStatus || doc.sipStatus;
-      const sipEndDate = update.sipEndDate
-        ? new Date(update.sipEndDate)
-        : sipStatus === 'inactive'
-        ? new Date()
-        : null;
-
-      // Recalculate all transactions
-      const transactions = [];
-      let currentDate = new Date(sipStartDate);
-      const endDate = sipStatus === 'active' ? new Date() : sipEndDate;
-
-      while (currentDate <= endDate) {
-        const sipDate = new Date(currentDate);
-        sipDate.setDate(sipDay);
-
-        // Handle months with fewer days than SIP day
-        if (sipDate.getMonth() !== currentDate.getMonth()) {
-          sipDate.setDate(0); // Last day of previous month
-        }
-
-        if (sipDate >= sipStartDate && sipDate <= endDate) {
-          try {
-            const nav = await fetchNAV(AMFI, sipDate);
-
-            transactions.push({
-              _id: new mongoose.Types.ObjectId().toHexString(),
-              date: new Date(sipDate).toISOString(), // ensure ISO format
-              amount: Math.round(Number(sipAmount)), // ensure integer
-              nav: parseFloat(nav),
-              units: parseFloat((sipAmount / nav).toFixed(8)) // round to 8 decimals
-            });
-          } catch (err) {
-            console.warn(
-              `Skipping SIP for ${sipDate.toISOString().split('T')[0]}: ${
-                err.message
-              }`
-            );
-          }
-        }
-
-        // Move to next month
-        currentDate.setMonth(currentDate.getMonth() + 1);
-      }
-      // console.log('new transaction');
-      // console.log(transactions);
-      // Force update transactions
+    // Add sipEndDate and lastUpdated if status changed to inactive
+    if (oldStatus === 'active' && newStatus === 'inactive') {
       update.$set = update.$set || {};
-      update.sipTransactions = transactions;
-      update.lastUpdated = new Date();
-
-      // Recalculate current value
-      const currentNAV = await getCurrentNAV(AMFI);
-      const totalUnits = transactions.reduce((sum, txn) => sum + txn.units, 0);
-      update.$set.currentValue = totalUnits * currentNAV;
-    } else if (doc.investmentType === 'lumpsum') {
-      console.log('passed1');
-      const hasLumpsumChanges =
-        (update.AMFI && update.AMFI !== doc.AMFI) ||
-        (update.lumpsumAmount && update.lumpsumAmount !== doc.lumpsumAmount) ||
-        (update.lumpsumDate &&
-          new Date(update.lumpsumDate).getTime() !== doc.lumpsumDate.getTime());
-
-      if (hasLumpsumChanges) {
-        const AMFI = update.AMFI || doc.AMFI;
-        const lumpsumAmount = update.lumpsumAmount || doc.lumpsumAmount;
-        const lumpsumDate = update.lumpsumDate
-          ? new Date(update.lumpsumDate)
-          : doc.lumpsumDate;
-
-        try {
-          console.log('passed2');
-          const navOnLumpsumDate = await fetchNAV(AMFI, lumpsumDate);
-          const units = parseFloat(
-            (lumpsumAmount / navOnLumpsumDate).toFixed(8)
-          );
-
-          const currentNAV = await getCurrentNAV(AMFI);
-          const currentValue = parseFloat((units * currentNAV).toFixed(2));
-          // console.log('new units : ', units);
-          // console.log(currentValue);
-          update.$set = update.$set || {};
-          update.lumpsumUnits = units;
-          update.lastUpdated = new Date();
-          update.$set.currentValue = currentValue;
-          // console.log('newest : ', update.lumpsumUnits);
-        } catch (err) {
-          console.warn(`Failed to update lumpsum details: ${err.message}`);
-        }
-      }
+      update.$set.sipEndDate = new Date();
+      update.$set.lastUpdated = new Date();
     }
 
+    // Apply update
     this.setUpdate(update);
     next();
   } catch (err) {
+    console.error('Error in handleUpdates:', err);
     next(err);
   }
 }
+
+
 
 // Add hooks
 mfSchema.pre('save', calculateLumpsumUnits);
 mfSchema.pre('save', processSIPTransactions);
 mfSchema.pre('save', calculateCurrentValue);
-mfSchema.index({ lastRedemptionDate: -1 });
+mfSchema.pre('updateOne', handleUpdates);
 mfSchema.pre('findOneAndUpdate', handleUpdates);
 
 const MutualFund = mongoose.model('MutualFund', mfSchema);

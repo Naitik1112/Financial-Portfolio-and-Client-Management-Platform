@@ -25,6 +25,8 @@ mongoose
 
 const port = process.env.PORT || 3000;
 
+require('./scheduler/businessScheduler');
+
 connectRedis()
   .then(() => {
     console.log('✅ Connected to Redis');

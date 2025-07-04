@@ -4,10 +4,10 @@ const authController = require('./../controllers/authContriller');
 
 const router = express.Router();
 
+router.route('/getAUM').get(DashboardController.getAUMBreakdown);
+
 router.use(authController.protect);
 router.use(authController.restrictTo('admin'));
-
-router.route('/getAUM').get(DashboardController.getAUMBreakdown);
 
 router.route('/getFDMaturing').get(DashboardController.getFDsMaturingThisMonth);
 

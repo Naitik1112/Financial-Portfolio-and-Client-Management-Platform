@@ -19,7 +19,7 @@ const findIdByName = async name => {
 };
 
 exports.convertNameToId = catchAsync(async (req, res, next) => {
-  console.log(req.body);
+  console.log("This is body",req.body);
 
   // Destructure variables from the request body
   const { holderId, nominee1Id, nominee2Id, nominee3Id } = req.body;
@@ -32,21 +32,14 @@ exports.convertNameToId = catchAsync(async (req, res, next) => {
   // Process nominees, removing them if their value is empty
   if (!nominee1Id || nominee1Id.trim() === '') {
     delete req.body.nominee1Id; // Remove nominee1Id if it's empty
-  } else {
-    req.body.nominee1Id = await findIdByName(nominee1Id);
-  }
-
+  } 
   if (!nominee2Id || nominee2Id.trim() === '') {
     delete req.body.nominee2Id; // Remove nominee2Id if it's empty
-  } else {
-    req.body.nominee2Id = await findIdByName(nominee2Id);
-  }
+  } 
 
   if (!nominee3Id || nominee3Id.trim() === '') {
     delete req.body.nominee3Id; // Remove nominee3Id if it's empty
-  } else {
-    req.body.nominee3Id = await findIdByName(nominee3Id);
-  }
+  } 
 
   next(); // Move to the next middleware or route handler
 });
