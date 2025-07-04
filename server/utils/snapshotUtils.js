@@ -1,6 +1,6 @@
 // utils/snapshotUtils.js
 const axios = require('axios');
-const BusinessSnapshot = require('../models/BusinessSnapshot');
+const BusinessSnapshot = require('../models/businessSnapshot');
 
 exports.fetchAndStoreSnapshot = async () => {
   const response = await axios.get(

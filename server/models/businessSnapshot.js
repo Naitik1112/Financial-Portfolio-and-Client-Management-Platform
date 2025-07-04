@@ -10,4 +10,5 @@ const BusinessSchema = new mongoose.Schema({
   fdTotalAmount: Number
 });
 
-module.exports = mongoose.model('BusinessSnapshot', BusinessSchema);
+const BusinessSnapshot = mongoose.model('BusinessSnapshot', BusinessSchema);
+module.exports = BusinessSnapshot;
