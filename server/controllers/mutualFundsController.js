@@ -19,7 +19,7 @@ const findIdByName = async name => {
 };
 
 exports.convertNameToId = catchAsync(async (req, res, next) => {
-  console.log("This is body",req.body);
+  console.log('This is body', req.body);
 
   // Destructure variables from the request body
   const { holderId, nominee1Id, nominee2Id, nominee3Id } = req.body;
@@ -32,14 +32,14 @@ exports.convertNameToId = catchAsync(async (req, res, next) => {
   // Process nominees, removing them if their value is empty
   if (!nominee1Id || nominee1Id.trim() === '') {
     delete req.body.nominee1Id; // Remove nominee1Id if it's empty
-  } 
+  }
   if (!nominee2Id || nominee2Id.trim() === '') {
     delete req.body.nominee2Id; // Remove nominee2Id if it's empty
-  } 
+  }
 
   if (!nominee3Id || nominee3Id.trim() === '') {
     delete req.body.nominee3Id; // Remove nominee3Id if it's empty
-  } 
+  }
 
   next(); // Move to the next middleware or route handler
 });
@@ -84,7 +84,34 @@ const calculateTax = (
 };
 
 exports.redeemUnits = catchAsync(async (req, res, next) => {
-  const now = new Date();
+  function toISTISOString(date) {
+    // IST offset is +5:30 = 330 minutes
+    const offsetMinutes = 330;
+
+    // get UTC time in ms
+    const utc = date.getTime();
+
+    // add offset in ms
+    const istTime = new Date(utc + offsetMinutes * 60000);
+
+    // extract date parts
+    const yyyy = istTime.getFullYear();
+    const mm = String(istTime.getMonth() + 1).padStart(2, '0');
+    const dd = String(istTime.getDate()).padStart(2, '0');
+    const hh = String(istTime.getHours()).padStart(2, '0');
+    const min = String(istTime.getMinutes()).padStart(2, '0');
+    const sec = String(istTime.getSeconds()).padStart(2, '0');
+    const ms = String(istTime.getMilliseconds()).padStart(3, '0');
+
+    // Construct ISO string with offset +05:30
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}:${sec}.${ms}+05:30`;
+  }
+
+  const first = new Date();
+  const now = toISTISOString(first);
+  const istString = now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+  console.log('IST time:', istString, ', UTC : ', now);
   const redemptionMap = req.body; // { mfId1: "100", mfId2: "200" }
   const taxSummary = [];
 
@@ -129,7 +156,7 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
       const purchaseNAV = mf.lumpsumAmount / mf.lumpsumUnits;
       const tax = calculateTax(
         new Date(mf.lumpsumDate),
-        new Date(),
+        now,
         unitsToRedeem,
         nav,
         purchaseNAV
@@ -143,7 +170,7 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
           $set: { lastRedemptionDate: now },
           $push: {
             redemptions: {
-              date: new Date(),
+              date: now,
               units: unitsToRedeem,
               nav
             }
@@ -169,7 +196,7 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
         const redeemNow = Math.min(unitsToRedeem, available);
         const tax = calculateTax(
           new Date(tx.date),
-          new Date(),
+          now,
           redeemNow,
           nav,
           tx.nav
@@ -186,7 +213,7 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
               $inc: { 'sipTransactions.$.redeemedUnits': redeemNow },
               $push: {
                 'sipTransactions.$.redemptions': {
-                  date: new Date(),
+                  date: now,
                   units: redeemNow,
                   nav
                 }
@@ -197,7 +224,7 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
 
         await MF.updateOne(
           { _id: mfId },
-          { $set: { lastRedemptionDate: new Date() } }
+          { $set: { lastRedemptionDate: now } }
         );
 
         unitsToRedeem -= redeemNow;

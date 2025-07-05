@@ -2,8 +2,110 @@ const Mutual = require('./../models/mutualFundsModel');
 const FD = require('./../models/debtModels');
 const GeneralInsurance = require('../models/generalInsuranceModels');
 const LifeInsurance = require('../models/lifeInsuranceModel');
-const axios = require('axios');
 const CatchAsync = require('./../utils/catchAsync');
+const dayjs = require('dayjs');
+const axios = require('axios');
+
+exports.getTodayBusiness = CatchAsync(async (req, res) => {
+  const now = new Date();
+  console.log('now:', now);
+
+  // ✅ Get today's date in IST (local time)
+  const todayStr = dayjs(now).format('YYYY-MM-DD');
+  console.log('todayStr:', todayStr);
+
+  // ✅ Format any date to local YYYY-MM-DD
+  const formatDate = d => dayjs(d).format('YYYY-MM-DD');
+
+  // 1. SIP + LUMPSUM + REDEMPTION
+  const mutualData = await Mutual.find();
+
+  let totalSip = 0;
+  let totalLumpsum = 0;
+  let totalRedemption = 0;
+
+  for (const item of mutualData) {
+    if (item.investmentType === 'sip') {
+      if (formatDate(item.sipStartDate) === todayStr) {
+        totalSip += item.sipAmount || 0;
+      }
+      for (const txn of item.sipTransactions || []) {
+        for (const red of txn.redemptions || []) {
+          const redDate = formatDate(red.date);
+          // console.log(redDate, todayStr);
+          if (redDate === todayStr) {
+            totalRedemption += (red.units || 0) * (red.nav || 0);
+          }
+        }
+      }
+    }
+
+    if (item.investmentType === 'lumpsum') {
+      if (formatDate(item.lumpsumDate) === todayStr) {
+        totalLumpsum += item.lumpsumAmount || 0;
+      }
+      for (const txn of item.redemptions || []) {
+        const redDate = formatDate(txn.date);
+        if (redDate === todayStr) {
+          totalRedemption += (txn.units || 0) * (txn.nav || 0);
+        }
+      }
+    }
+  }
+
+  // 2. General Insurance
+  const generalData = await GeneralInsurance.find();
+  let totalGeneral = 0;
+
+  for (const item of generalData) {
+    const startDate = formatDate(item.startPremiumDate);
+    // console.log(item.startPremiumDate, '→', startDate, 'vs', todayStr);
+    if (startDate === todayStr) {
+      const currentYear = new Date().getFullYear();
+      for (const prem of item.premium || []) {
+        if (prem.year === currentYear) {
+          totalGeneral += prem.premium1 || 0;
+        }
+      }
+    }
+  }
+
+  // 3. Life Insurance
+  const lifeData = await LifeInsurance.find();
+  let totalLife = 0;
+
+  for (const item of lifeData) {
+    const startDate = formatDate(item.startPremiumDate);
+    if (startDate === todayStr) {
+      totalLife += item.premium || 0;
+    }
+  }
+
+  // 4. Debt
+  const fdData = await FD.find();
+  let totalDebt = 0;
+
+  for (const item of fdData) {
+    const startDate = formatDate(item.startDate);
+    if (startDate === todayStr) {
+      totalDebt += item.amount || 0;
+    }
+  }
+
+  // Final response
+  res.status(200).json({
+    status: 'success',
+    data: {
+      date: todayStr,
+      todaySip: totalSip,
+      todayLumpsum: totalLumpsum,
+      todayRedemption: totalRedemption,
+      todayGeneralInsurance: totalGeneral,
+      todayLifeInsurance: totalLife,
+      todayDebt: totalDebt
+    }
+  });
+});
 
 exports.getAUMBreakdown = CatchAsync(async (req, res) => {
   const mutualFunds = await Mutual.find({});

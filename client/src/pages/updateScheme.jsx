@@ -249,7 +249,7 @@ const EditMutualFund = () => {
   }, [users, formData.holderId]);
 
   const schemeLabel = useMemo(() => {
-    return formData.schemeName?.split(' - ')[0] || 'N/A';
+    return formData.schemeName?.split('-')[0] || 'N/A';
   }, [formData.schemeName]);
 
   const schemeFullName = useMemo(() => {
@@ -474,7 +474,7 @@ const EditMutualFund = () => {
         </Box>
       </Box>
 
-      {formData.sipStatus === 'active' && (
+      {formData.sipStatus === 'active' &&  formData.investmentType === 'sip' && (
         <Button 
           size="large" 
           variant="contained" 

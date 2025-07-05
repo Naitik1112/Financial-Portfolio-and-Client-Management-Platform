@@ -151,14 +151,14 @@ const AddGeneral = () => {
         const formattedPolicyData = {
           ...policyData,
           startPremiumDate: startPremiumDate
-            ? dayjs(startPremiumDate).format('YYYY-MM-DDT00:00:00.000Z')
+            ? dayjs(startPremiumDate.substring(0, 10))
             : null,
           claims: claims.map(claim => ({
             ...claim,
             claim: parseInt(claim.claim,10),
             approvalClaim: parseInt(claim.approvalClaim,10),
-            requestDate: claim.requestDate ? dayjs(claim.requestDate).toISOString() : null,
-            approvalDate: claim.approvalDate ? dayjs(claim.approvalDate).toISOString() : null
+            requestDate: claim.requestDate ? dayjs(claim.requestDate.substring(0, 10)) : null, 
+            approvalDate: claim.approvalDate ? dayjs(claim.approvalDate.substring(0, 10)): null
           })),
           premium: premiums.map((c) => ({
             year: parseInt(c.year, 10),
@@ -378,8 +378,8 @@ const AddGeneral = () => {
               />
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
-                  label="Request Date"
-                  value={claim.requestDate ? dayjs(claim.requestDate) : null}
+                  label="Request Date"  
+                  value={claim.requestDate ? dayjs(claim.requestDate.substring(0, 10)) : null}
                   onChange={(date) => handleClaimChange(index, 'requestDate', date ? date.format('YYYY-MM-DD') : null)}
                   sx={inputStyles}
                 />
@@ -394,7 +394,7 @@ const AddGeneral = () => {
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
                   label="Approval Date"
-                  value={claim.approvalDate ? dayjs(claim.approvalDate) : null}
+                  value={claim.approvalDate ? dayjs(claim.approvalDate.substring(0, 10)) : null}
                   onChange={(date) => handleClaimChange(index, 'approvalDate', date ? date.format('YYYY-MM-DD') : null)}
                   sx={inputStyles}
                 />

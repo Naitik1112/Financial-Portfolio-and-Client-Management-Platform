@@ -68,7 +68,7 @@ const AddGeneral = () => {
         setPolicyName(data.policyName || '');
         setCompanyName(data.companyName || ' ');
         setPolicyNumber(data.policyNumber || " ");
-        setStartPremiumDate(data.startPremiumDate ? dayjs(data.startPremiumDate) : null)
+        setStartPremiumDate(data.startPremiumDate ?  dayjs(data.startPremiumDate.substring(0, 10)) : null);
         setClaimYears(data.claims.length || 0)
         setPendingClaimYears(data.claims.length || 0)
         const cleanedClaims = data.claims?.map(({ _id, ...rest }) => rest) || [];
@@ -81,6 +81,8 @@ const AddGeneral = () => {
         // setLenght(data.claim?.length || 4)
         console.log("claims",claims)
         console.log(cleanedClaims)
+        console.log(data.startPremiumDate)
+        console.log(dayjs(data.startPremiumDate).startOf('day') )
       } catch (err) {
         setError('Failed to fetch policy data. Please try again later.');
         console.error(err);
@@ -211,8 +213,8 @@ const AddGeneral = () => {
             ...claim,
             claim: parseInt(claim.claim,10),
             approvalClaim: parseInt(claim.approvalClaim,10),
-            requestDate: claim.requestDate ? dayjs(claim.requestDate).toISOString() : null,
-            approvalDate: claim.approvalDate ? dayjs(claim.approvalDate).toISOString() : null
+            requestDate: claim.requestDate ? dayjs(claim.requestDate.substring(0, 10)) : null,
+            approvalDate: claim.approvalDate ? dayjs(claim.approvalDate.substring(0, 10)) : null
           })),
           premium: premiums.map((c) => ({
             year: parseInt(c.year, 10),
@@ -255,7 +257,7 @@ const AddGeneral = () => {
   return (
     <Box sx={{display: 'flex',flexDirection: 'column',justifyContent: 'space-between',padding:'40px',marginTop: '120px', gap: 4,width: '100%',...containerStyles}}>
       <Typography sx={{fontSize: '2rem', fontWeight: 'bold', color: '#fff', textAlign: 'center',  marginBottom: '10px',}}>
-        Update {clientName1}'s {policyName}
+        Update {clientName1}'s {policyName} Policy
       </Typography>
       <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between',  gap: 4, width: '100%', }}>
         <Box sx={{ display: 'flex',flexDirection: 'column',gap: 2,width: '45ch',}}>
@@ -437,7 +439,7 @@ const AddGeneral = () => {
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
                   label="Request Date"
-                  value={claim.requestDate ? dayjs(claim.requestDate) : null}
+                  value={claim.requestDate ? dayjs(claim.requestDate.substring(0, 10)) : null}
                   onChange={(date) => handleClaimChange(index, 'requestDate', date ? date.format('YYYY-MM-DD') : null)}
                   sx={inputStyles}
                 />
@@ -452,7 +454,7 @@ const AddGeneral = () => {
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
                   label="Approval Date"
-                  value={claim.approvalDate ? dayjs(claim.approvalDate) : null}
+                  value={claim.approvalDate ? dayjs(claim.approvalDate.substring(0, 10)) : null}
                   onChange={(date) => handleClaimChange(index, 'approvalDate', date ? date.format('YYYY-MM-DD') : null)}
                   sx={inputStyles}
                 />
