@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { fetchAndStoreSnapshot } = require('../utils/snapshotUtils');
+const businessController = require("../controllers/businessController");
 
 router.get('/trigger', async (req, res) => {
   try {
@@ -19,5 +20,14 @@ router.get('/trigger', async (req, res) => {
     });
   }
 });
+
+router.get("/fake-business-snapshots", businessController.getFakeBusinessSnapshots);
+
+router.get('/business-snapshot/:type', businessController.getGroupedBusinessSnapshots);
+
+module.exports = router;
+
+
+
 
 module.exports = router;
