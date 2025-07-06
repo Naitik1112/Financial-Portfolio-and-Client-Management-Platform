@@ -23,8 +23,6 @@ const globalErrorHandler = require('./controllers/errorController');
 // In app.js or wherever your routes are registered
 const snapshotRoutes = require('./routes/snapshotRoutes');
 
-
-
 const app = express();
 
 // app.set('view engine', 'pug');
@@ -44,6 +42,7 @@ const corsOptions = {
     'http://localhost:3000',
     'http://localhost:5173',
     process.env.FRONTEND_URL,
+    'https://financial-portfolio-and-client-mana.vercel.app',
     'https://financial-portfolio-and-client-management-platform-1qibu6r3k.vercel.app',
     'https://financial-portfolio-and-client.onrender.com'
   ],
@@ -101,7 +100,6 @@ app.use((req, res, next) => {
   // console.log(req.headers);
   next();
 });
-
 
 // 3) ROUTES
 app.use('/api/v1/users', userRouter);
