@@ -21,6 +21,13 @@ export const fetchBusinessData = async type => {
         }
       }
     );
+    // const res12 = await axios.get('https://api.mfapi.in/mf', {
+    //   // Override headers to remove Authorization for this request
+    //   headers: {
+    //     Authorization: undefined
+    //   }
+    // });
+    // console.log(res12);
     console.log(response);
     return response.data.map(business => ({
       ...business,

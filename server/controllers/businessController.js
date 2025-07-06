@@ -16,7 +16,7 @@ const BASE_DATA = {
 };
 
 // Starting from 2025-07-05 going backwards 60 days
-const BASE_DATE = new Date('2025-07-04T00:00:00.000Z');
+const BASE_DATE = new Date('2025-07-05T00:00:00.000Z');
 
 exports.getFakeBusinessSnapshots = async (req, res) => {
   try {
@@ -62,7 +62,7 @@ exports.getFakeBusinessSnapshots = async (req, res) => {
         date: isoDate.toISOString(),
 
         todaySip: randomInRange(2000, 10000),
-        todayLumpsum: randomInRange(10000, 50000),
+        todayLumpsum: randomInRange(100000, 150000),
         todayRedemption: randomInRange(0, 10000),
         todayGeneralInsurance: randomInRange(0, 5000),
         todayLifeInsurance: randomInRange(0, 20000),

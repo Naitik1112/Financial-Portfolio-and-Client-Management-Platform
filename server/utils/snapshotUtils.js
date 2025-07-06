@@ -3,30 +3,41 @@ const axios = require('axios');
 const BusinessSnapshot = require('../models/businessSnapshot');
 
 exports.fetchAndStoreSnapshot = async () => {
-  const response = await axios.get(
-    `${process.env.Backend_URL}/api/v1/dashboard/getAUM`
-  );
-  const response1 = await axios.get(
-    `${process.env.Backend_URL}/api/v1/dashboard/getTodayBusiness`
-  );
-  const data = response.data.data;
-  const data1 = response1.data.data
+  // Use Promise.all for parallel requests
+  const [aumResponse, businessResponse] = await Promise.all([
+    axios.get(`${process.env.BACKEND_URL}/api/v1/dashboard/getAUM`, { 
+      timeout: 30000,
+      headers: { 'Internal-Cron': 'true' } // For security
+    }),
+    axios.get(`${process.env.BACKEND_URL}/api/v1/dashboard/getTodayBusiness`, {
+      timeout: 30000,
+      headers: { 'Internal-Cron': 'true' }
+    })
+  ]);
+
+  // Validate responses
+  if (!aumResponse.data?.data || !businessResponse.data?.data) {
+    throw new Error('Invalid response structure from API');
+  }
+
+  const { data: aumData } = aumResponse.data;
+  const { data: businessData } = businessResponse.data;
 
   const snapshot = new BusinessSnapshot({
-    AUM: data.AUM,
-    sipTotalBook: data.sipTotalBook,
-    lumpsumTotal: data.lumpsumTotal,
-    lifeInsuranceTotal: data.lifeInsuranceTotal,
-    generalInsuranceTotal: data.generalInsuranceTotal,
-    fdTotalAmount: data.fdTotalAmount,
+    AUM: aumData.AUM,
+    sipTotalBook: aumData.sipTotalBook,
+    lumpsumTotal: aumData.lumpsumTotal,
+    lifeInsuranceTotal: aumData.lifeInsuranceTotal,
+    generalInsuranceTotal: aumData.generalInsuranceTotal,
+    fdTotalAmount: aumData.fdTotalAmount,
     timestamp: new Date(),
-    date: data1.date,
-    todaySip: data1.todaySip,
-    todayLumpsum: data1.todayLumpsum,
-    todayRedemption: data1.todayRedemption,
-    todayGeneralInsurance: data1.todayGeneralInsurance,
-    todayLifeInsurance: data1.todayLifeInsurance,
-    todayDebt: data1.todayDebt
+    date: businessData.date,
+    todaySip: businessData.todaySip,
+    todayLumpsum: businessData.todayLumpsum,
+    todayRedemption: businessData.todayRedemption,
+    todayGeneralInsurance: businessData.todayGeneralInsurance,
+    todayLifeInsurance: businessData.todayLifeInsurance,
+    todayDebt: businessData.todayDebt
   });
 
   await snapshot.save();

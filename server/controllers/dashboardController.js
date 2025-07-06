@@ -4,7 +4,13 @@ const GeneralInsurance = require('../models/generalInsuranceModels');
 const LifeInsurance = require('../models/lifeInsuranceModel');
 const CatchAsync = require('./../utils/catchAsync');
 const dayjs = require('dayjs');
+const utc = require('dayjs/plugin/utc');
+const timezone = require('dayjs/plugin/timezone');
 const axios = require('axios');
+
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 exports.getTodayBusiness = CatchAsync(async (req, res) => {
   const now = new Date();
@@ -15,7 +21,9 @@ exports.getTodayBusiness = CatchAsync(async (req, res) => {
   console.log('todayStr:', todayStr);
 
   // ✅ Format any date to local YYYY-MM-DD
-  const formatDate = d => dayjs(d).format('YYYY-MM-DD');
+  // const formatDate = d => dayjs(d).format('YYYY-MM-DD');
+  const formatDate = d => new Date(d).toISOString().split('T')[0];
+
 
   // 1. SIP + LUMPSUM + REDEMPTION
   const mutualData = await Mutual.find();
@@ -31,8 +39,9 @@ exports.getTodayBusiness = CatchAsync(async (req, res) => {
       }
       for (const txn of item.sipTransactions || []) {
         for (const red of txn.redemptions || []) {
+          // const r = red.date;
           const redDate = formatDate(red.date);
-          // console.log(redDate, todayStr);
+          // console.log("stored date : ",r,", formatted date : ",redDate, todayStr, red.units , red.nav);
           if (redDate === todayStr) {
             totalRedemption += (red.units || 0) * (red.nav || 0);
           }

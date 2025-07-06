@@ -355,9 +355,9 @@ async function handleUpdates(next) {
       this.getQuery ? this.getQuery() : this._conditions
     );
 
-    console.log('Model update runned');
-    console.log('Update object:', update);
-    console.log('Existing doc:', doc);
+    // console.log('Model update runned');
+    // console.log('Update object:', update);
+    // console.log('Existing doc:', doc);
 
     // Skip if no document found or no meaningful update
     if (!doc || (!update.$set && !update.$setOnInsert)) {
@@ -388,7 +388,7 @@ async function handleUpdates(next) {
 
     // Check if we should compute new transactions
     const updateFields = update || {};
-    console.log('update fields', updateFields);
+    // console.log('update fields', updateFields);
     const shouldComputeTransactions =
       // SIP conditions
       (updateFields.AMFI && updateFields.AMFI !== doc.AMFI) ||

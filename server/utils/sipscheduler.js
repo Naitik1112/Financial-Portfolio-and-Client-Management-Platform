@@ -1,68 +1,130 @@
-// eslint-disable-next-line import/no-extraneous-dependencies
-const schedule = require('node-schedule');
+const cron = require('node-cron');
 const axios = require('axios');
-const Transactions = require('../models/mutualFundTransactionsModel'); // Adjust path if needed
-const MutualFunds = require('../models/mutualFundsModel'); // Adjust path if needed
+const MutualFund = require('../models/mutualFundsModel'); // Adjust path as needed
+const logger = require('./logger');
 
-async function fetchNAV(amfi) {
-  const apiUrl = `https://api.mfapi.in/mf/${amfi}`;
-  const response = await axios.get(apiUrl, {
-    // Override headers to remove Authorization for this request
-    headers: {
-      Authorization: undefined
-    }
-  });
-  if (response.status === 200 && response.data && response.data.data) {
-    const today = new Date();
-    let nav = null;
-    response.data.data.forEach(record => {
-      const recordDate = new Date(
-        record.date
-          .split('-')
-          .reverse()
-          .join('-')
-      );
-      if (recordDate <= today) {
-        nav = parseFloat(record.nav);
-      }
-    });
-    return nav;
+class SipTransactionScheduler {
+  constructor() {
+    this.isProcessing = false;
   }
-  return Error('Failed to fetch NAV data from the API');
-}
 
-async function processSIPTransactions() {
-  const today = new Date();
-  const transactions = await Transactions.find({ type: 'SIP' }).populate(
-    'fundId'
-  );
+  initialize() {
+    // Schedule to run every day at 10:00 AM IST
+    cron.schedule(
+      '45 22 * * *',
+      () => {
+        this.processSipTransactions();
+      },
+      {
+        scheduled: true,
+        timezone: 'Asia/Kolkata'
+      }
+    );
+    logger.info(
+      'SIP Transaction Scheduler initialized - runs daily at 10:00 AM IST'
+    );
+  }
 
-  transactions.forEach(async transaction => {
-    if (transaction.TransactionDate.getDate() === today.getDate()) {
-      try {
-        const amfi = transaction.fundId.AMFI;
-        const nav = await fetchNAV(amfi);
+  async processSipTransactions() {
+    if (this.isProcessing) {
+      logger.warn('SIP transaction processing already in progress');
+      return;
+    }
 
-        if (nav) {
-          const newUnits = transaction.Amount / nav;
-          transaction.UNIT += newUnits;
-          transaction.NAV = nav;
-          await transaction.save();
+    this.isProcessing = true;
+    logger.cron.jobStart('sip-transaction-processing');
 
-          const mutualFund = await MutualFunds.findById(transaction.fundId._id);
-          mutualFund.totalunits += newUnits;
-          await mutualFund.save();
+    try {
+      // Get yesterday's date (previous day)
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const dayOfMonth = yesterday.getDate();
+
+      // Step 1: Find all eligible SIPs
+      const eligibleSips = await MutualFund.find({
+        sipStatus: 'active',
+        investmentType: 'sip',
+        sipDay: dayOfMonth
+      });
+
+      logger.info(`Found ${eligibleSips.length} eligible SIPs for processing`);
+
+      // Step 2: Process each SIP
+      for (const sip of eligibleSips) {
+        try {
+          await this.processSingleSip(sip, yesterday);
+        } catch (error) {
+          logger.error(
+            `Failed to process SIP for holder ${sip.holderId}: ${error.message}`
+          );
+          // Continue with next SIP even if one fails
         }
-      } catch (err) {
-        console.error(
-          `Error processing transaction ${transaction._id}: ${err.message}`
+      }
+
+      logger.cron.jobSuccess('sip-transaction-processing', {
+        processedCount: eligibleSips.length
+      });
+    } catch (error) {
+      logger.cron.jobFailure('sip-transaction-processing', error);
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  async processSingleSip(sip, transactionDate) {
+    const MAX_RETRIES = 3;
+    let attempts = 0;
+    let lastError = null;
+
+    while (attempts < MAX_RETRIES) {
+      try {
+        // ... existing API call and processing logic ...
+        // Step 3: Get latest NAV from API
+        const apiResponse = await axios.get(
+          `https://api.mfapi.in/mf/${sip.AMFI}/latest`,
+          { headers: { Authorization: undefined } }
         );
+
+        if (
+          apiResponse.data.status !== 'SUCCESS' ||
+          !apiResponse.data.data?.[0]?.nav
+        ) {
+          throw new Error(`Failed to fetch NAV for AMFI code ${sip.AMFI}`);
+        }
+
+        const latestNav = parseFloat(apiResponse.data.data[0].nav);
+        const units = sip.sipAmount / latestNav;
+
+        // Create new SIP transaction
+        const newTransaction = {
+          date: transactionDate,
+          amount: sip.sipAmount,
+          nav: latestNav,
+          units: units
+        };
+
+        // Update the mutual fund document
+        await MutualFund.findByIdAndUpdate(sip._id, {
+          $push: { sipTransactions: newTransaction },
+          $set: { lastUpdated: new Date() }
+        });
+
+        logger.info(
+          `Added SIP transaction for ${sip.schemeName} (NAV: ${latestNav}, Units: ${units})`
+        );
+        return; // Success - exit the function
+      } catch (error) {
+        attempts++;
+        lastError = error;
+        if (attempts < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+          continue;
+        }
+        throw lastError;
       }
     }
-  });
+  }
 }
 
-schedule.scheduleJob('0 0 * * *', async () => {
-  console.log('Running scheduled SIP transactions update...');
-  await processSIPTransactions();
-});
+// Singleton instance
+module.exports = new SipTransactionScheduler();

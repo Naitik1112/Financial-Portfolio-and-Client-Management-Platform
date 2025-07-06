@@ -132,7 +132,8 @@ const App = () => {
             backgroundColor: background1,
             borderRadius: "15px",
             padding: "6px 16px",
-            gap: "10px"
+            gap: "10px",
+            height: '40px'
           }}
         >
           <input

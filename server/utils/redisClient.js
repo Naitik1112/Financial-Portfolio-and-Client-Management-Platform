@@ -16,4 +16,4 @@ async function connectRedis() {
   }
 }
 
-module.exports = { client, connectRedis };
+module.exports = { connectRedis ,client};

@@ -38,8 +38,9 @@ const menuItems = [
   { text: 'Add Insurance', icon: <BusinessCenter />, path: '/addInsurance' },
   { text: 'Add General', icon: <AddBox />, path: '/addGeneral' },
   { text: 'Add Mutual Fund', icon: <AddCircle />, path: '/addPolicy' },
-  { text: 'Investment & More', icon: <Dashboard />, path: '/investmentmore' },
   { text: 'Group Management', icon: <Group/>, path: '/groupManagement' },
+  { text: 'Redemption', icon: <AddCircle/>, path: '/redemption' },
+  { text: 'Investment & More', icon: <Dashboard />, path: '/investmentmore' },
 ];
 
 const Sidebar = () => {

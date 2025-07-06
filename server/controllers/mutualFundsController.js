@@ -3,6 +3,7 @@ const MF = require('./../models/mutualFundsModel');
 const catchAsync = require('./../utils/catchAsync');
 const factory = require('./handlerFactory');
 const User = require('./../models/userModels');
+const axios = require('axios');
 
 const path = require('path');
 const { exec } = require('child_process');
@@ -117,7 +118,9 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
 
   for (const mfId of Object.keys(redemptionMap)) {
     let unitsToRedeem = parseFloat(redemptionMap[mfId]);
-    if (isNaN(unitsToRedeem) || unitsToRedeem <= 0) continue;
+    if (isNaN(unitsToRedeem)) {
+      continue;
+    }
 
     const mf = await MF.findOne({ _id: mfId });
 
@@ -127,17 +130,36 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
         .json({ message: `Mutual fund not found: ${mfId}` });
     }
 
-    // Calculate current NAV
-    const nav =
-      mf.currentValue && mf.investmentType === 'lumpsum'
-        ? mf.currentValue / mf.lumpsumUnits
-        : mf.currentValue /
-          mf.sipTransactions.reduce((sum, tx) => sum + (tx.units || 0), 0);
+    // Fetch latest NAV from API
+    console.log(mf);
+    let nav;
+    try {
+      console.log(mf.AMFI);
+      console.log(`https://api.mfapi.in/mf/${mf.AMFI}/latest`);
+      const response = await axios.get(
+        `https://api.mfapi.in/mf/${mf.AMFI}/latest`,
+        { headers: { Authorization: undefined } }
+      );
+      if (
+        response.data.status === 'SUCCESS' &&
+        response.data.data &&
+        response.data.data[0]
+      ) {
+        nav = parseFloat(response.data.data[0].nav);
+      } else {
+        throw new Error('Invalid API response');
+      }
+    } catch (error) {
+      console.error(`Failed to fetch NAV for AMFI code ${mf.AMFI}:`, error);
+      return res.status(500).json({
+        message: `Failed to fetch NAV for ${mf.schemeName}`
+      });
+    }
 
-    if (!nav || isNaN(nav)) {
+    if (isNaN(nav)) {
       return res
         .status(400)
-        .json({ message: `Unable to get NAV for mutual fund ${mfId}` });
+        .json({ message: `Invalid NAV received for mutual fund ${mfId}` });
     }
 
     let taxForThisFund = 0;
