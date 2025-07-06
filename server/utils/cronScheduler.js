@@ -5,7 +5,7 @@ const logger = require('./logger');
 const axios = require('axios');
 
 // Configuration
-const CRON_SCHEDULE = '46 23 * * *'; // Daily at 11:30 PM
+const CRON_SCHEDULE = '15 23 * * *'; // Daily at 11:30 PM
 const MAX_ATTEMPTS = 3;
 const COLD_START_DELAY = 15000; // 15 seconds
 const PING_INTERVAL = 10 * 60 * 1000; // 10 minutes
