@@ -11,7 +11,7 @@ class SipTransactionScheduler {
   initialize() {
     // Schedule to run every day at 10:00 AM IST
     cron.schedule(
-      '10 10 * * *',
+      '10 13 * * *',
       () => {
         this.processSipTransactions();
       },
