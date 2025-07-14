@@ -8,9 +8,15 @@ const redemptionSchema = new mongoose.Schema(
       default: Date.now
     },
     units: Number,
-    nav: Number
-  },
-  { _id: false }
+    nav: Number,
+    taxtype: {
+      type: String,
+      enum: ['LTCG', 'STCG']
+    },
+    tax: {
+      type: Number
+    }
+  }
 );
 
 const mfSchema = new mongoose.Schema(
@@ -527,6 +533,15 @@ async function handleUpdates(next) {
   }
 }
 
+const triggerSnapshot = async () => {
+  try {
+    await axios.get(`${process.env.BACKEND_URL}/api/v1/snapshot/trigger`);
+    console.log('Snapshot triggered successfully');
+  } catch (err) {
+    console.error('Failed to trigger snapshot:', err.message);
+  }
+};
+
 // async function handleUpdates(next) {
 //   try {
 //     if (this.isNew || this._skipHooks) return next();
@@ -576,14 +591,35 @@ async function handleUpdates(next) {
 //   }
 // }
 
-
-
 // Add hooks
 mfSchema.pre('save', calculateLumpsumUnits);
 mfSchema.pre('save', processSIPTransactions);
 mfSchema.pre('save', calculateCurrentValue);
 mfSchema.pre('updateOne', handleUpdates);
 mfSchema.pre('findOneAndUpdate', handleUpdates);
+
+// Trigger after save (create or update)
+mfSchema.post('save', function() {
+  triggerSnapshot();
+});
+
+// Trigger after remove (manual removal via .remove())
+mfSchema.post('remove', function() {
+  triggerSnapshot();
+});
+
+// Trigger after findOneAndUpdate or findOneAndDelete
+mfSchema.post('findOneAndUpdate', function() {
+  triggerSnapshot();
+});
+
+mfSchema.post('findOneAndDelete', function() {
+  triggerSnapshot();
+});
+
+mfSchema.post('findOneAndRemove', function() {
+  triggerSnapshot();
+});
 
 const MutualFund = mongoose.model('MutualFund', mfSchema);
 module.exports = MutualFund;
