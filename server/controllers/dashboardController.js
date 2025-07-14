@@ -8,7 +8,6 @@ const utc = require('dayjs/plugin/utc');
 const timezone = require('dayjs/plugin/timezone');
 const axios = require('axios');
 
-
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -24,7 +23,6 @@ exports.getTodayBusiness = CatchAsync(async (req, res) => {
   // const formatDate = d => dayjs(d).format('YYYY-MM-DD');
   const formatDate = d => new Date(d).toISOString().split('T')[0];
 
-
   // 1. SIP + LUMPSUM + REDEMPTION
   const mutualData = await Mutual.find();
 
@@ -32,9 +30,13 @@ exports.getTodayBusiness = CatchAsync(async (req, res) => {
   let totalLumpsum = 0;
   let totalRedemption = 0;
 
+  const today = new Date();
+  const todayDay = today.getDate();
+
   for (const item of mutualData) {
     if (item.investmentType === 'sip') {
-      if (formatDate(item.sipStartDate) === todayStr) {
+      // console.log(item.sipStartDate, todayStr, item.sipDay, todayDay, today);
+      if (item.sipDay === todayDay) {
         totalSip += item.sipAmount || 0;
       }
       for (const txn of item.sipTransactions || []) {

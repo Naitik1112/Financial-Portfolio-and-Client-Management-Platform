@@ -305,7 +305,6 @@ const AddPolicy = () => {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '300px',
-        marginTop: '80px',
         gap: 2,
         color: mfLoading ? (darkMode ? '#fff' : '#000') : (darkMode ? '#fff' : '#000')
       }}
@@ -323,7 +322,7 @@ const AddPolicy = () => {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'flex-start',
-      marginTop: '80px',
+      marginTop: '100px',
       padding: { xs: '16px', sm: '24px' },
       width: '100%',
       minHeight: '500px', // consistent height if needed
@@ -368,6 +367,17 @@ const AddPolicy = () => {
           />
 
           {/* Card Grid */}
+         <Box sx={{ width: '100%' }}>
+          <Typography
+            sx={{
+              fontSize: '1rem',
+              color: 'rgb(165, 165, 165)',
+              textAlign: 'left',
+            }}
+          >
+            Select Mutual Fund Scheme
+          </Typography>
+        </Box>
           <Box
             sx={{
               maxHeight: '300px',
@@ -398,13 +408,13 @@ const AddPolicy = () => {
                         schemeName: option.schemeName,
                         fundHouse
                       }));
-                      setSearchQuery(option.schemeName);
+                      // setSearchQuery(option.schemeName);
                     }}
                     sx={{
                       cursor: 'pointer',
                       border: isSelected ? '2px solid #2196f3' : '1px solid #ccc',
-                      borderRadius: '12px',
-                      padding: '15px',
+                      borderRadius: '10px',
+                      padding: '18px',
                       width: isSelected ? '100%' : { xs: '100%', sm: '45%' },
                       boxShadow: isSelected
                         ? '0 0 10px rgba(33,150,243,0.6)'
@@ -416,12 +426,12 @@ const AddPolicy = () => {
                       transition: 'all 0.2s ease-in-out',
                     }}
                   >
-                    <Typography variant="subtitle1" fontWeight="bold" sx={{ color: darkMode ? '#fff' : '#000' }}>
+                    <Typography variant="subtitle1" fontSize="15px" fontWeight="bold" sx={{ color: darkMode ? '#fff' : '#000' }}>
                       {option.schemeName}
                     </Typography>
-                    <Typography variant="body2" sx={{ color: darkMode ? '#fff' : '#000' }}>
+                    {/* <Typography variant="body2" fontSize="12px" sx={{ color: darkMode ? '#fff' : '#000' }}>
                       Fund House: {option.schemeName?.split('-')[0]?.trim() || 'N/A'}
-                    </Typography>
+                    </Typography> */}
                   </Box>
                 );
               })}
