@@ -5,7 +5,7 @@ const BusinessSnapshot = require('../models/businessSnapshot');
 exports.fetchAndStoreSnapshot = async () => {
   // Use Promise.all for parallel requests
   const [aumResponse, businessResponse] = await Promise.all([
-    axios.get(`${process.env.BACKEND_URL}/api/v1/dashboard/getAUM`, { 
+    axios.get(`${process.env.BACKEND_URL}/api/v1/dashboard/getAUM`, {
       timeout: 30000,
       headers: { 'Internal-Cron': 'true' } // For security
     }),
@@ -14,7 +14,8 @@ exports.fetchAndStoreSnapshot = async () => {
       headers: { 'Internal-Cron': 'true' }
     })
   ]);
-
+  console.log('aumResponse', aumResponse);
+  console.log('businessResponse : ', businessResponse);
   // Validate responses
   if (!aumResponse.data?.data || !businessResponse.data?.data) {
     throw new Error('Invalid response structure from API');
@@ -22,7 +23,7 @@ exports.fetchAndStoreSnapshot = async () => {
 
   const { data: aumData } = aumResponse.data;
   const { data: businessData } = businessResponse.data;
-
+  
   const snapshot = new BusinessSnapshot({
     AUM: aumData.AUM,
     sipTotalBook: aumData.sipTotalBook,
