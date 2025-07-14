@@ -4,6 +4,7 @@ const BusinessSnapshot = require('../models/businessSnapshot');
 
 exports.fetchAndStoreSnapshot = async () => {
   // Use Promise.all for parallel requests
+  console.log(process.env.BACKEND_URL)
   const [aumResponse, businessResponse] = await Promise.all([
     axios.get(`${process.env.BACKEND_URL}/api/v1/dashboard/getAUM`, {
       timeout: 30000,
@@ -23,7 +24,7 @@ exports.fetchAndStoreSnapshot = async () => {
 
   const { data: aumData } = aumResponse.data;
   const { data: businessData } = businessResponse.data;
-  
+
   const snapshot = new BusinessSnapshot({
     AUM: aumData.AUM,
     sipTotalBook: aumData.sipTotalBook,
