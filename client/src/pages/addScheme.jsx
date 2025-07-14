@@ -428,6 +428,16 @@ const AddPolicy = () => {
 
           </Box>
 
+          <TextField
+            label="Selected Scheme"
+            value={formData.schemeName || ''}
+            fullWidth
+            InputProps={{
+              readOnly: true,
+            }}
+            sx={inputStyles}
+          />
+
           {/* Investment Type Dropdown */}
           <Autocomplete
             options={investmentTypes}
