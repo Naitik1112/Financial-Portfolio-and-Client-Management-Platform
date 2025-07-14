@@ -297,40 +297,36 @@ exports.getAllMutualFunds = async (req, res) => {
   }
 };
 
-exports.refreshAmfiSchemeCache = (req, res) => {
-  const scriptPath = path.join(__dirname, './../python/fetch_amfi_data.py');
-  const pythonPath = process.env.PYTHON_PATH || 'python';
-
-  exec(
-    `${pythonPath} "${scriptPath}"`,
-    { maxBuffer: 1024 * 1024 * 5 },
-    async (err, stdout, stderr) => {
-      if (err)
-        return res.status(500).json({ status: 'error', message: stderr });
-
-      try {
-        const schemeMap = JSON.parse(stdout); // { amfiCode: schemeName }
-        const res1 = await client.set(
-          'amfi_scheme_map',
-          JSON.stringify(schemeMap),
-          {
-            EX: 86400
-          }
-        ); // expire after 1 day
-        // console.log(' ', res1);
-        // console.log('Response');
-        res.status(200).json({
-          status: 'success',
-          message: 'Cache refreshed',
-          count: Object.keys(schemeMap).length
-        });
-      } catch (e) {
-        res
-          .status(500)
-          .json({ status: 'error', message: `JSON parse or Redis error ${e}` });
+exports.refreshAmfiSchemeCache = async (req, res) => {
+  try {
+    const response = await axios.get('https://api.mfapi.in/mf', {
+      headers: {
+        Authorization: undefined
       }
+    });
+    const data = response.data;
+
+    const schemeMap = {};
+    for (const item of data) {
+      schemeMap[item.schemeCode] = item.schemeName;
     }
-  );
+
+    await client.set('amfi_scheme_map', JSON.stringify(schemeMap), {
+      EX: 86400
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Cache refreshed',
+      count: Object.keys(schemeMap).length
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to refresh AMFI scheme cache',
+      error: err.message || err
+    });
+  }
 };
 
 exports.getSchemesCaching = async (req, res) => {

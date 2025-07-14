@@ -1,14 +1,19 @@
-import { useState, useEffect } from 'react';
+import { React, useState, useEffect, useMemo } from 'react';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
+import CircularProgress  from '@mui/material/CircularProgress';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import Autocomplete from '@mui/material/Autocomplete';
 import dayjs from 'dayjs';
 import axios from 'axios';
+
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import Tooltip from '@mui/material/Tooltip';
+
 
 import { getStyles } from "../styles/themeStyles";
 import { useThemeMode } from "../context/ThemeContext";
@@ -44,12 +49,30 @@ const AddPolicy = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mfOptions, setMfOptions] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [formStage, setFormStage] = useState(1); // 1 = Select scheme/type, 2 = Fill details
+  
+
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+  const [mfLoading, setMfLoading] = useState(true); // Add this
+
 
   const { darkMode } = useThemeMode();
-  const { inputStyles, buttonStyles, containerStyles, containerStyles1 } = getStyles(darkMode);
+  const { inputStyles, buttonStyles, containerStyles, containerStyles1 , fontColor} = getStyles(darkMode);
+
+  const selectedHolder = users.find(user => user._id === formData.holderId);
+
+
+  const orderedOptions = useMemo(() => {
+    if (!formData.schemeName) return mfOptions;
+    const selected = mfOptions.find(opt => opt.schemeName === formData.schemeName);
+    if (!selected) return mfOptions;
+
+    const others = mfOptions.filter(opt => opt.schemeName !== formData.schemeName);
+    return [selected, ...others];
+  }, [mfOptions, formData.schemeName]);
 
 
   // Fetch users for dropdowns
@@ -76,6 +99,7 @@ const AddPolicy = () => {
 
   useEffect(() => {
     const fetchMutualFunds = async () => {
+      setMfLoading(true); // start loading
       try {
         const response = await axios.get(`${backendURL}/api/v1/mutualFunds/autocomplete`, {
           headers: {
@@ -83,18 +107,18 @@ const AddPolicy = () => {
             Authorization: `Bearer ${token}`
           },
         });
-        console.log(response);
-        const data = response.data; // ✅ CORRECT way to access JSON
+        const data = response.data;
         if (data && data.data) {
-          setMfOptions(data.data); 
+          setMfOptions(data.data);
         }
       } catch (error) {
         console.error('Error fetching mutual fund schemes:', error);
+      } finally {
+        setMfLoading(false); // done loading
       }
     };
     fetchMutualFunds();
   }, []);
-
 
   // Fetch scheme details when AMFI code changes
   const fetchSchemeDetails = async (code) => {
@@ -250,10 +274,17 @@ const AddPolicy = () => {
         sipStartDate: null,
         sipEndDate: null,
         sipDay: 1,
-        sipStatus: 'active'
+        sipStatus: 'active',
       });
 
+      
+      setSearchQuery('')
+
+      // Go back to step 1
+      setFormStage(1);
+
       alert('Mutual fund added successfully!');
+
     } catch (error) {
       console.error('Error submitting form:', error);
       setError(error.message || 'Failed to submit form. Please try again.');
@@ -262,17 +293,41 @@ const AddPolicy = () => {
     }
   };
 
-  return (
+  {/* Prepare ordered options with selected first */}
+  
+
+
+  return (mfLoading || isSubmitting) ? (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '300px',
+        marginTop: '80px',
+        gap: 2,
+        color: mfLoading ? (darkMode ? '#fff' : '#000') : (darkMode ? '#fff' : '#000')
+      }}
+    >
+      <CircularProgress color="primary" size={40} />
+      <Typography variant="body1" sx={{ mt: 1 }}>
+        {mfLoading
+          ? 'The data is getting loaded...'
+          : 'The form is getting submitted...'}
+      </Typography>
+    </Box>
+    ) : (
     <Box sx={{
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'space-between',
-      gap: 4,
-      width: '100%',
-      padding: '0px',
-      paddingTop: '0px',
-      paddingBottom: '15px',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
       marginTop: '80px',
+      padding: { xs: '16px', sm: '24px' },
+      width: '100%',
+      minHeight: '500px', // consistent height if needed
+      boxSizing: 'border-box',
       ...containerStyles,
     }}>
       <Typography sx={{
@@ -280,54 +335,171 @@ const AddPolicy = () => {
         fontWeight: 'bold',
         color: 'rgb(165, 165, 165)',
         textAlign: 'center',
-        marginTop: '20px',
         marginBottom: '10px',
       }}>
         Add Mutual Fund Scheme
       </Typography>
 
-      {error && (
-        <Typography sx={{ color: 'red', textAlign: 'center' }}>{error}</Typography>
+      {error && <Typography sx={{ color: 'red', textAlign: 'center' }}>{error}</Typography>}
+
+      {formStage === 1 && (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 3,
+            width: {
+              xs: '95%',   // small screens
+              sm: '600px', // tablets
+              md: '700px', // desktop
+            },
+            margin: 'auto',
+            padding: { xs: '10px', sm: '20px' },
+          }}
+        >
+          {/* Search Input */}
+          <TextField
+            label="Search Mutual Fund Scheme"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            fullWidth
+            sx={inputStyles}
+          />
+
+          {/* Card Grid */}
+          <Box
+            sx={{
+              maxHeight: '300px',
+              overflowY: 'auto',
+              width: '100%',
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: 2,
+              paddingRight: '6px'
+            }}
+          >
+            {orderedOptions
+              .filter(option =>
+                option.schemeName.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              .slice(0, 30)
+              .map((option, index) => {
+                const isSelected = formData.schemeName === option.schemeName;
+                return (
+                  <Box
+                    key={index}
+                    onClick={() => {
+                      const fundHouse = option.schemeName?.split('-')[0]?.trim() || 'N/A';
+                      setFormData(prev => ({
+                        ...prev,
+                        AMFI: option.amfiCode,
+                        schemeName: option.schemeName,
+                        fundHouse
+                      }));
+                      setSearchQuery(option.schemeName);
+                    }}
+                    sx={{
+                      cursor: 'pointer',
+                      border: isSelected ? '2px solid #2196f3' : '1px solid #ccc',
+                      borderRadius: '12px',
+                      padding: '15px',
+                      width: isSelected ? '100%' : { xs: '100%', sm: '45%' },
+                      boxShadow: isSelected
+                        ? '0 0 10px rgba(33,150,243,0.6)'
+                        : '0 2px 5px rgba(0,0,0,0.1)',
+                      backgroundColor: isSelected
+                        ? (darkMode ? '#003c6e' : '#e3f2fd')
+                        : (darkMode ? '#1e1e1e' : '#f5f5f5'),
+                      color: darkMode ? '#fff' : '#000',
+                      transition: 'all 0.2s ease-in-out',
+                    }}
+                  >
+                    <Typography variant="subtitle1" fontWeight="bold" sx={{ color: darkMode ? '#fff' : '#000' }}>
+                      {option.schemeName}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: darkMode ? '#fff' : '#000' }}>
+                      Fund House: {option.schemeName?.split('-')[0]?.trim() || 'N/A'}
+                    </Typography>
+                  </Box>
+                );
+              })}
+
+          </Box>
+
+          {/* Investment Type Dropdown */}
+          <Autocomplete
+            options={investmentTypes}
+            getOptionLabel={(option) => option.label}
+            value={investmentTypes.find(opt => opt.value === formData.investmentType) || null}
+            onChange={(_, newValue) => handleChange('investmentType', newValue?.value || '')}
+            renderInput={(params) => <TextField {...params} label="Investment Type" />}
+            sx={{ width: '100%', ...inputStyles }}
+          />
+
+          {/* Next Button */}
+          <Tooltip
+            title={!formData.schemeName || !formData.investmentType
+              ? 'Please select a mutual fund scheme and investment type'
+              : ''}
+            arrow
+            disableHoverListener={formData.schemeName && formData.investmentType} // Only show on hover if disabled
+          >
+            <span style={{ width: '100%' }}> {/* Needed for tooltip on disabled buttons */}
+              <Button
+                variant="contained"
+                fullWidth
+                sx={{
+                  ...buttonStyles,
+                  color: fontColor, // 👈 Use your theme-based fontColor always
+                  backgroundColor: (!formData.schemeName || !formData.investmentType)
+                    ? (darkMode ? '#333' : '#e0e0e0')
+                    : undefined,
+                  '&:hover': {
+                    backgroundColor: (!formData.schemeName || !formData.investmentType)
+                      ? (darkMode ? '#444' : '#d5d5d5')
+                      : undefined,
+                  },
+                }}
+                disabled={!formData.schemeName || !formData.investmentType}
+                onClick={() => setFormStage(2)}
+                startIcon={
+                  (!formData.schemeName || !formData.investmentType)
+                    ? <ErrorOutlineIcon />
+                    : null
+                }
+              >
+                Next
+              </Button>
+
+            </span>
+          </Tooltip>
+
+        </Box>
       )}
 
-      <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 4, width: '100%' }}>
-        {/* Left Column - Common Fields */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '45ch' }}>
-          <Autocomplete
-            options={mfOptions}
-            getOptionLabel={(option) => option.schemeName}
-            value={mfOptions.find(option => option.schemeName === formData.schemeName) || null}
-            onChange={(_, selected) => {
-              if (selected) {
-                const fundHouse = selected.schemeName?.split('-')[0]?.trim() || 'N/A';
-                setFormData(prev => ({
-                  ...prev,
-                  AMFI: selected.amfiCode,
-                  schemeName: selected.schemeName,
-                  fundHouse
-                }));
-              } else {
-                // Clear if user clears the field
-                setFormData(prev => ({
-                  ...prev,
-                  AMFI: '',
-                  schemeName: '',
-                  fundHouse: ''
-                }));
-              }
-            }}
-            renderInput={(params) => <TextField {...params} label="Mutual Fund Scheme" />}
-            sx={inputStyles}
-            componentsProps={{
-              paper: {
-                sx: {
-                  bgcolor: 'grey',
-                  color: 'black',
-                },
-              },
-            }}
-          />          
-          
+      {formStage === 2 && (
+        <>
+        <Box
+          sx={{
+            width: {
+              xs: '95%',   // small screens
+              sm: '600px', // tablets
+              md: '700px', // desktop
+            },
+            maxWidth: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
+          }}
+        >
+          <Typography variant="subtitle1" sx={{ color: 'gray', marginBottom: '10px' }}>
+            Scheme: {formData.schemeName} <br />
+            Fund House: {formData.fundHouse} <br />
+            Holder: {selectedHolder ? selectedHolder.name : 'N/A'}
+          </Typography>
+
           <Autocomplete
             options={users}
             getOptionLabel={(user) => user.name}
@@ -335,24 +507,12 @@ const AddPolicy = () => {
             onChange={(_, newValue) => handleChange('holderId', newValue?._id || '')}
             renderInput={(params) => <TextField {...params} label="Holder" />}
             sx={inputStyles}
-            componentsProps={{
-              paper: {
-                sx: {
-                  bgcolor: 'grey',
-                  color: 'black',
-                },
-              },
-            }}
           />
-
-
-
 
           {formData.investmentType === 'sip' ? (
             <>
               <TextField
                 label="SIP Amount (₹)"
-                variant="outlined"
                 type="number"
                 value={formData.sipAmount}
                 onChange={(e) => handleChange('sipAmount', e.target.value)}
@@ -361,7 +521,6 @@ const AddPolicy = () => {
 
               <TextField
                 label="SIP Day of Month"
-                variant="outlined"
                 type="number"
                 value={formData.sipDay}
                 onChange={(e) => {
@@ -371,85 +530,7 @@ const AddPolicy = () => {
                 inputProps={{ min: 1, max: 31 }}
                 sx={inputStyles}
               />
-            </>
-          ) : formData.investmentType === 'lumpsum' ? (
-            <>
-              <TextField
-                label="Amount (₹)"
-                variant="outlined"
-                type="number"
-                value={formData.lumpsumAmount}
-                onChange={(e) => handleChange('lumpsumAmount', e.target.value)}
-                sx={inputStyles}
-              />
-            </>
-          ) : null}
 
-
-
-        </Box>
-
-            
-
-
-        {/* Right Column - Type-Specific Fields */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '45ch' }}>
-
-
-          <Autocomplete
-            options={investmentTypes}
-            getOptionLabel={(option) => option.label}
-            value={investmentTypes.find(opt => opt.value === formData.investmentType) || null}
-            onChange={(_, newValue) => handleChange('investmentType', newValue?.value || '')}
-            renderInput={(params) => <TextField {...params} label="Investment Type" />}
-            sx={inputStyles}
-            componentsProps={{
-              paper: {
-                sx: {
-                  bgcolor: 'grey',
-                  color: 'black',
-                },
-              },
-            }}
-          />
-
-
-          {[1].map((num) => (
-            <Autocomplete
-              key={num}
-              options={users}
-              getOptionLabel={(user) => user.name}
-              value={users.find(user => user._id === formData[`nominee${num}Id`]) || null}
-              onChange={(_, newValue) => handleChange(`nominee${num}Id`, newValue?._id || '')}
-              renderInput={(params) => <TextField {...params} label={`Nominee ${num}`} />}
-              sx={inputStyles}
-              componentsProps={{
-                paper: {
-                  sx: {
-                    bgcolor: 'grey',
-                    color: 'black',
-                  },
-                },
-              }}
-            />
-          ))}
-
-
-          {formData.investmentType === 'lumpsum' ? (
-            <>
-              
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  label="Investment Date"
-                  value={formData.lumpsumDate}
-                  onChange={(newValue) => handleChange('lumpsumDate', newValue)}
-                  sx={inputStyles}
-                />
-              </LocalizationProvider>
-            </>
-          ) : formData.investmentType === 'sip' ? (
-            <>
-              
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
                   label="Start Date"
@@ -458,7 +539,7 @@ const AddPolicy = () => {
                   sx={inputStyles}
                 />
               </LocalizationProvider>
-              
+
               <Autocomplete
                 options={sipStatusOptions}
                 getOptionLabel={(option) => option.label}
@@ -466,16 +547,8 @@ const AddPolicy = () => {
                 onChange={(_, newValue) => handleChange('sipStatus', newValue?.value || 'active')}
                 renderInput={(params) => <TextField {...params} label="SIP Status" />}
                 sx={inputStyles}
-                componentsProps={{
-                  paper: {
-                    sx: {
-                      bgcolor: 'grey',
-                      color: 'black',
-                    },
-                  },
-                }}
               />
-              
+
               {formData.sipStatus === 'inactive' && (
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DatePicker
@@ -487,23 +560,50 @@ const AddPolicy = () => {
                 </LocalizationProvider>
               )}
             </>
+          ) : formData.investmentType === 'lumpsum' ? (
+            <>
+              <TextField
+                label="Amount (₹)"
+                type="number"
+                value={formData.lumpsumAmount}
+                onChange={(e) => handleChange('lumpsumAmount', e.target.value)}
+                sx={inputStyles}
+              />
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Investment Date"
+                  value={formData.lumpsumDate}
+                  onChange={(newValue) => handleChange('lumpsumDate', newValue)}
+                  sx={inputStyles}
+                />
+              </LocalizationProvider>
+            </>
           ) : null}
-          
-          
-        </Box>
-      </Box>
 
-      <Button 
-        size="large" 
-        variant="contained" 
-        onClick={handleSubmit}
-        disabled={isSubmitting}
-        sx={buttonStyles}
-      >
-        {isSubmitting ? 'Submitting...' : 'Submit'}
-      </Button>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() => setFormStage(1)}
+              sx={{ ...buttonStyles, backgroundColor: 'gray', color: 'white' }}
+            >
+              Back
+            </Button>
+            <Button
+              size="large"
+              variant="contained"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              sx={buttonStyles}
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit'}
+            </Button>
+          </Box>
+        </Box>
+        </>
+      )}
     </Box>
   );
+
 };
 
 export default AddPolicy;

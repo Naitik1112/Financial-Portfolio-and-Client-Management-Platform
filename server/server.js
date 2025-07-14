@@ -3,41 +3,40 @@ const dotenv = require('dotenv');
 const { exec } = require('child_process');
 const path = require('path');
 const { connectRedis, client } = require('./utils/redisClient'); // Make sure client is exported from redisClient
+const axios = require('axios');
 
 dotenv.config({ path: './config.env' });
 const app = require('./app');
 
-// Add the cache refresh function
+// Replace the whole refreshAmfiCache function:
 async function refreshAmfiCache() {
-  const scriptPath = path.join(__dirname, './python/fetch_amfi_data.py');
-  const pythonPath = process.env.PYTHON_PATH || 'python';
-
   console.log('⏳ Running scheduled AMFI cache refresh...');
-  
-  return new Promise((resolve, reject) => {
-    exec(
-      `${pythonPath} "${scriptPath}"`,
-      { maxBuffer: 1024 * 1024 * 5 },
-      async (err, stdout, stderr) => {
-        if (err) {
-          console.error('❌ AMFI cache refresh failed:', stderr);
-          return reject(err);
-        }
 
-        try {
-          const schemeMap = JSON.parse(stdout);
-          await client.set('amfi_scheme_map', JSON.stringify(schemeMap), {
-            EX: 86400 // 24 hours
-          });
-          console.log('✅ AMFI cache refreshed successfully. Items:', Object.keys(schemeMap).length);
-          resolve();
-        } catch (e) {
-          console.error('❌ AMFI cache refresh error:', e);
-          reject(e);
-        }
+  try {
+    const response = await axios.get('https://api.mfapi.in/mf', {
+      headers: {
+        Authorization: undefined
       }
+    });
+    const data = response.data;
+
+    const schemeMap = {};
+    for (const item of data) {
+      schemeMap[item.schemeCode] = item.schemeName;
+    }
+
+    await client.set('amfi_scheme_map', JSON.stringify(schemeMap), {
+      EX: 86400 // 24 hours
+    });
+
+    console.log(
+      '✅ AMFI cache refreshed successfully. Items:',
+      Object.keys(schemeMap).length
     );
-  });
+  } catch (err) {
+    console.error('❌ AMFI cache refresh failed:', err.message || err);
+    throw err;
+  }
 }
 
 // Initialize cache refresh schedule
@@ -71,7 +70,7 @@ mongoose
     useCreateIndex: true
   })
   .then(() => {
-    console.log('DB connection successful!')
+    console.log('DB connection successful!');
 
     // Start cron scheduler
     // const scheduler = require('./utils/cronScheduler');
@@ -92,10 +91,10 @@ require('./scheduler/businessScheduler');
 connectRedis()
   .then(() => {
     console.log('✅ Connected to Redis');
-    
+
     // Initialize the cache refresh schedule after Redis connects
     initializeCacheRefresh();
-    
+
     const server = app.listen(port, () => {
       console.log(`🚀 Server is running on port ${port}`);
     });
