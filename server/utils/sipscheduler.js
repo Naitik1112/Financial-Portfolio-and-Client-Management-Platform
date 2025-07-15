@@ -109,7 +109,8 @@ class SipTransactionScheduler {
     while (attempts < MAX_RETRIES) {
       try {
         const res = await axios.get(
-          `https://api.mfapi.in/mf/${sip.AMFI}/latest`
+          `https://api.mfapi.in/mf/${sip.AMFI}/latest`,
+          { headers: { Authorization: undefined } }
         );
 
         if (
