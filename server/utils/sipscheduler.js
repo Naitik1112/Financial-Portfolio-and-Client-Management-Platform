@@ -4,7 +4,7 @@ const axios = require('axios');
 const MutualFund = require('../models/mutualFundsModel');
 const logger = require('./logger');
 
-const CRON_SCHEDULE = '59 16 * * *'; // Adjust as needed
+const CRON_SCHEDULE = '59 8 * * *'; // Adjust as needed
 const MAX_ATTEMPTS = 3;
 const COLD_START_DELAY = 15000; // 15 seconds
 
