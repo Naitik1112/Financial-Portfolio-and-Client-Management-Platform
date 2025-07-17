@@ -4,17 +4,37 @@ const axios = require('axios');
 const MutualFund = require('../models/mutualFundsModel');
 const logger = require('./logger');
 
-const CRON_SCHEDULE = '59 8 * * *'; // Adjust as needed
+// Configuration
+const CRON_SCHEDULE = '59 10 * * *'; // Run daily at 10:59 AM
 const MAX_ATTEMPTS = 3;
 const COLD_START_DELAY = 15000; // 15 seconds
+const PING_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
 class SipTransactionScheduler {
   constructor() {
     this.isProcessing = false;
+    this.keepAliveInterval = null;
   }
 
   async initialize() {
+    this.startKeepAlive();
     this.scheduleSipJob();
+  }
+
+  startKeepAlive() {
+    if (process.env.NODE_ENV !== 'production') return;
+
+    this.keepAliveInterval = setInterval(() => {
+      this.pingOwnServer().catch(() => {});
+    }, PING_INTERVAL);
+  }
+
+  async pingOwnServer() {
+    try {
+      await axios.get(`${process.env.BACKEND_URL}/health`, { timeout: 5000 });
+    } catch (error) {
+      logger.warn('Keep-alive ping failed (normal during cold start)');
+    }
   }
 
   scheduleSipJob() {
@@ -30,7 +50,6 @@ class SipTransactionScheduler {
         logger.info('Starting scheduled SIP transaction job...');
 
         try {
-          // Cold start delay
           await new Promise(resolve => setTimeout(resolve, COLD_START_DELAY));
 
           let success = false;
@@ -58,6 +77,7 @@ class SipTransactionScheduler {
           logger.error(
             `SIP job failed after ${MAX_ATTEMPTS} attempts: ${error.message}`
           );
+          // Optional: Notify via email/slack
         } finally {
           this.isProcessing = false;
         }
@@ -74,7 +94,6 @@ class SipTransactionScheduler {
   async processSipTransactions() {
     logger.cron.jobStart('sip-transaction-processing');
 
-    // Get yesterday’s date
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const dayOfMonth = yesterday.getDate();
