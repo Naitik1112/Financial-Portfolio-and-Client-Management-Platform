@@ -5,7 +5,7 @@ const MutualFund = require('../models/mutualFundsModel');
 const logger = require('./logger');
 
 // Configuration
-const CRON_SCHEDULE = '34 11 * * *'; // Run daily at 10:59 AM
+const CRON_SCHEDULE = '59 10 * * *'; // Run daily at 10:59 AM
 const MAX_ATTEMPTS = 3;
 const COLD_START_DELAY = 15000; // 15 seconds
 const PING_INTERVAL = 10 * 60 * 1000; // 10 minutes
@@ -132,7 +132,10 @@ class SipTransactionScheduler {
           { headers: { Authorization: undefined } }
         );
 
-        if (res.data.status !== 'SUCCESS' || !res.data.data?.[0]?.nav) {
+        if (
+          res.data.status !== 'SUCCESS' ||
+          !res.data.data?.[0]?.nav
+        ) {
           throw new Error(`NAV fetch failed for AMFI ${sip.AMFI}`);
         }
 
