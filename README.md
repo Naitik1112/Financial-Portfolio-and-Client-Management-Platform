@@ -21,11 +21,11 @@ This platform solves the above by offering:
 
 - 🔗 **Unified client dashboard** to track all investments.
 - 🔁 **Automated SIP deductions** and redemptions using `node-cron` and **RabbitMQ** for async task execution.
-- 📊 **Performance dashboards** with filtering options (monthly/quarterly/yearly).
+- 📊 **Performance dashboards** with filtering options (weekly/monthly/yearly).
 - 📄 **Dynamic PDF & Excel reports** with auto-email delivery using `Nodemailer`.
-- 📦 **Redis caching** to handle large data sets (up to 34,000+ entries).
+- 📦 **Redis caching** to handle large data sets (up to **34,000+ entries**).
 - 👨‍👩‍👧‍👦 **Group management** to combine portfolios (e.g., family-based reports).
-- 🧾 **Tax calculation** based on FIFO logic for redemptions.
+- 🧾 **Tax calculation** based on **FIFO logic** for redemptions.
 - 🔒 **Insurance claim tracking** (life & general).
 - 💰 **Fixed deposit management** with maturity tracking.
 
@@ -45,11 +45,10 @@ This platform solves the above by offering:
 
 ### 📈 Dashboards & Analytics
 - Interactive graphs using `Chart.js`
-- Filters: Monthly, Quarterly, Yearly
+- Filters: Weekly, Monthly, Yearly
 
 ### 🧾 Taxation Support
 - Tax computation during redemption
-- Auto-included in PDF reports
 
 ### 📑 Dynamic Report Generation
 - Over 10 reports: valuation, grouped, taxation, cash flow, etc.
@@ -81,6 +80,23 @@ This platform solves the above by offering:
 | Email Delivery      | Nodemailer         |
 | Charting            | Chart.js           |
 
+## 🔗 External APIs Used
+
+The platform integrates the following external APIs to fetch and update mutual fund data:
+
+- **Mutual Fund List API**  
+  Used to retrieve the list of all mutual funds along with their corresponding AMFI codes.  
+  ➤ `https://www.mfapi.in/`
+
+- **Mutual Fund NAV API**  
+  Used to fetch historical NAV data of a mutual fund using its AMFI code.  
+  ➤ `https://api.mfapi.in/mf/{AMFI_CODE}`  
+  Example: `https://api.mfapi.in/mf/145456`
+  
+  Used to fetch latest NAV data of a mutual fund using its AMFI code.  
+  ➤ `https://api.mfapi.in/mf/{AMFI_CODE}/latest`  
+  Example: `https://api.mfapi.in/mf/145456/latest`
+
 ---
 
 ## 🧠 Upcoming Features
@@ -88,6 +104,7 @@ This platform solves the above by offering:
 - **SWP (Systematic Withdrawal Plan)**: Automate periodic withdrawals based on rules.
 - **AI-based Investment Recommendations**: Based on client goals, risk, and historical data.
 - **Client Notification System**: Notify via email/SMS on SIP due dates and redemptions.
+- **Dockerization and CI/CD pipelining**: To Ensure Scalability.
 
 ---
 
