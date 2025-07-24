@@ -11,6 +11,43 @@ import dayjs from 'dayjs';
 
 const typelabels = [{label:'Health Insurance'},{label:'Car Insurance'},{label:'Travel Insurance'},{label:'PA Insurance'}]
 
+const companyNames = 
+  [{label:'Acko'}
+  ,{label:'Aditya Birla'}
+  ,{label:'Agriculture'}
+  ,{label:'Bajaj Allianz'}
+  ,{label:'Cholamandalam MS'}
+  ,{label:'Manipal Cigna'}
+  ,{label:'Navi'}
+  ,{label:'Go Digit'}
+  ,{label:'Zuno'}
+  ,{label:'ECGC'}
+  ,{label:'Future'}
+  ,{label:'HDFC ERGO'}
+  ,{label:'ICICI'}
+  ,{label:'IFFCO'}
+  ,{label:'Zurich Kotak'}
+  ,{label:'Liberty'}
+  ,{label:'Magma'}
+  ,{label:'Niva Bupa'}
+  ,{label:'National'}
+  ,{label:'New India'}
+  ,{label:'Raheja QBE'}
+  ,{label:'Reliance'}
+  ,{label:'Care'}
+  ,{label:'Royal Sundaram'}
+  ,{label:'SBI'}
+  ,{label:'Shriram'}
+  ,{label:'Star Health'}
+  ,{label:'Tata AIG'}
+  ,{label:'The Oriental'}
+  ,{label:'United India'}
+  ,{label:'Universal Sompo'}
+  ,{label:'Kshema'}
+  ,{label:'Galaxy'}
+  ,{label:'Care'}
+  ]
+
 import { getStyles } from "../styles/themeStyles";
 import { useThemeMode } from "../context/ThemeContext";
   

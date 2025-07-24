@@ -15,10 +15,11 @@ import { getStyles } from "../styles/themeStyles";
 import { useThemeMode } from "../context/ThemeContext";
 
 const type = [{label:'Monthly'},{label:'Quaterly'},{label:'Half-Yearly'},{label:'Yearly'}]
+
+const policytype = [{label:'ULIP'},{label:'Endowment'},{label:'MoneyBack'},{label:'Term'}]
   
 const EditPolicy = () => {
-  const [policyData, setPolicyData] = useState({
-  });
+  const [policyData, setPolicyData] = useState({});
   const [policyName,setPolicyName] = useState('')
   const [companyName,setCompanyName] = useState('')
   const [policyNumber,setPolicyNumber] = useState('')
@@ -29,8 +30,8 @@ const EditPolicy = () => {
   const [maturityDate,setMaturityDate] = useState(null)
   const [clientId, setClientId] = useState('');
   const [nominee1Id, setNominee1Id] = useState('');
-  const [nominee2Id, setNominee2Id] = useState('');
-  const [nominee3Id, setNominee3Id] = useState('');
+  const [sumAssured, setSumAssured] = useState('');
+  const [policy, setPolicyType] = useState('');
   const [mode, setMode] = useState('');
   const { id } = useParams()
   const [error, setError] = useState('');
@@ -67,8 +68,8 @@ const EditPolicy = () => {
         console.log(data)
         setClientId(data.clientId?._id || '');
         setNominee1Id(data.nominee1ID?._id || '');
-        setNominee2Id(data.nominee2ID?._id || '');
-        setNominee3Id(data.nominee3ID?._id || '');
+        setSumAssured(data.sumAssured || '');
+        setPolicyType(data.policyType || '');
         setMode(data.mode || '');
         setPolicyName(data.policyName || '');
         setCompanyName(data.companyName || ' ');
@@ -180,8 +181,7 @@ const EditPolicy = () => {
           mode,
           clientId,
           nominee1ID: nominee1Id,
-          nominee2ID: nominee2Id,
-          nominee3ID: nominee3Id,
+          sumAssured: sumAssured,
           policyName: policyName,
           companyName: companyName,
           policyNumber: policyNumber,
@@ -248,8 +248,16 @@ const EditPolicy = () => {
       </Box>
   
       <Box sx={{display: 'flex',flexDirection: 'column',gap: 2,width: '45ch',}}>
-        <TextField id="outlined-basic-2" label="Premium" type="number" variant="outlined" value={premium} onChange={(e) => setPremium(e.target.value)}
-            sx={inputStyles} InputProps={{ readOnly: true }}/>
+        <TextField 
+          id="outlined-basic-2" 
+          label="Premium" 
+          type="number" 
+          variant="outlined" 
+          value={premium} 
+          onChange={(e) => setPremium(e.target.value)}
+          sx={inputStyles} 
+          InputProps={{ readOnly: true }}
+        />
         <Autocomplete sx={inputStyles} disablePortal options={type} renderInput={(params) => <TextField {...params} label="Mode" />} componentsProps={{
             paper: {
               sx: {
@@ -285,19 +293,17 @@ const EditPolicy = () => {
           onChange={(event, newValue) => setNominee1Id(newValue?.id || '')}
           readOnly
         />
-        <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 2" />} componentsProps={{
-            paper: {
-              sx: {
-                bgcolor: "grey", // Background color of the dropdown menu
-                color: "black",  // Text color (optional)
-              },
-            },
-          }}
-          value={top100Films.find((option) => option.id === nominee2Id) || null}
-          onChange={(event, newValue) => setNominee2Id(newValue?.id || '')}
-          readOnly
+        <TextField 
+          id="outlined-basic-2" 
+          label="Sum Assured" 
+          type="number" 
+          variant="outlined" 
+          value={sumAssured} 
+          onChange={(e) => setSumAssured(e.target.value)}
+          sx={inputStyles} 
+          InputProps={{ readOnly: true }}
         />
-        <Autocomplete sx={inputStyles} disablePortal options={top100Films} renderInput={(params) => <TextField {...params} label="Nominee 3" />} componentsProps={{
+        <Autocomplete sx={inputStyles} disablePortal options={policytype} renderInput={(params) => <TextField {...params} label="Policy Type" />} componentsProps={{
             paper: {
               sx: {
                 bgcolor: "grey", // Background color of the dropdown menu
@@ -305,8 +311,8 @@ const EditPolicy = () => {
               },
             },
           }}
-          value={top100Films.find((option) => option.id === nominee3Id) || null}
-          onChange={(event, newValue) => setNominee3Id(newValue?.id || '')}
+          value={policytype.find((option) => option.label === policy) || null}
+          onChange={(event, newValue) => setPolicyType(newValue?.label || '')}
           readOnly
         />
         

@@ -48,4 +48,9 @@ router
   .route('/monthlyReport')
   .post(monthlyReportController.getMonthlyPremiumData);
 
+
+router
+  .route('/taxReport')
+  .post(monthlyReportController.getTaxation);
+
 module.exports = router;

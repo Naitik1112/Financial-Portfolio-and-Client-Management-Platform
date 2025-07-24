@@ -16,8 +16,9 @@ const reportType = [
   { label: 'Life Insurance of Client' },
   { label: 'General Insurance of Client' },
   { label: 'Debts of Client' },
-  { label: 'Mutual Funds of Client' },
+  { label: 'Mutual Funds Valuation of Client' },
   { label: 'Scheme wise - Valution Report' },
+  { label: 'Taxation Report of Client' },
   { label: 'CashFlow of Client' },
   { label: 'Claims of Client' },
 ];
@@ -27,7 +28,12 @@ const type = [
   { label: 'XLSX', value: 'excel' },
 ];
 
-
+// Generate years for selection (current year and past 10 years)
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 11 }, (_, i) => ({ 
+  label: (currentYear - i).toString(), 
+  value: (currentYear - i).toString() 
+}));
 
 const IndividualReport = () => {
   const [holderName, setHolderName] = useState(null);
@@ -41,6 +47,7 @@ const IndividualReport = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(years[0]); // Default to current year
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
@@ -58,6 +65,7 @@ const IndividualReport = () => {
     setEmail('');
     setTitle('');
     setDescription('');
+    setSelectedYear(years[0]);
   };
 
   useEffect(() => {
@@ -123,11 +131,17 @@ const IndividualReport = () => {
       alert('Please fill all fields!');
       return;
     }
+
+    // Additional validation for taxation report
+    if (selectedReport.label === 'Taxation Report of Client' && !selectedYear) {
+      alert('Please select a year for taxation report!');
+      return;
+    }
   
     let apiUrl;
     if (selectedReport.label === 'Life Insurance of Client') {
       apiUrl = `${backendURL}/api/v1/reports/policyByClient`;
-    } else if (selectedReport.label === 'Mutual Funds of Client') {
+    } else if (selectedReport.label === 'Mutual Funds Valuation of Client') {
       apiUrl = `${backendURL}/api/v1/reports/schemeByClient`;
     } else if (selectedReport.label === 'General Insurance of Client') {
       apiUrl = `${backendURL}/api/v1/reports/generalPolicyByClient`;
@@ -139,6 +153,8 @@ const IndividualReport = () => {
       apiUrl = `${backendURL}/api/v1/reports/schemeValuation`; 
     } else if (selectedReport.label === 'Claims of Client') {
       apiUrl = `${backendURL}/api/v1/reports/claimsByClient`;
+    } else if (selectedReport.label === 'Taxation Report of Client') {
+      apiUrl = `${backendURL}/api/v1/reports/taxReport`;
     } else {
       alert('Invalid report type selected!');
       return;
@@ -149,6 +165,11 @@ const IndividualReport = () => {
       name: holderName.id,
       format: downloadFormat.value,
     };
+
+    // Add year and regime for taxation report
+    if (selectedReport.label === "Taxation Report of Client") {
+      payload.year = selectedYear.value;
+    }
 
     if (selectedReport.label === "Scheme wise - Valution Report") {
       if (!selectedScheme) {
@@ -193,6 +214,13 @@ const IndividualReport = () => {
       alert('Please fill all fields!');
       return;
     }
+    
+    // Additional validation for taxation report
+    if (selectedReport.label === 'Taxation Report of Client' && !selectedYear) {
+      alert('Please select a year for taxation report!');
+      return;
+    }
+
     setEmail(holderName.email || '');
     setTitle(`${selectedReport.label} report of ${holderName.label}`);
     setDescription(`Dear ${holderName.label}\nPlease find attached your ${selectedReport.label}`);
@@ -208,7 +236,7 @@ const IndividualReport = () => {
     let apiUrl;
     if (selectedReport.label === 'Life Insurance of Client') {
       apiUrl = `${backendURL}/api/v1/reports/policyByClient`;
-    } else if (selectedReport.label === 'Mutual Funds of Client') {
+    } else if (selectedReport.label === 'Mutual Funds Valuation of Client') {
       apiUrl = `${backendURL}/api/v1/reports/schemeByClient`;
     } else if (selectedReport.label === 'General Insurance of Client') {
       apiUrl = `${backendURL}/api/v1/reports/generalPolicyByClient`;
@@ -220,6 +248,8 @@ const IndividualReport = () => {
       apiUrl = `${backendURL}/api/v1/reports/schemeValuation`; 
     } else if (selectedReport.label === 'Claims of Client') {
       apiUrl = `${backendURL}/api/v1/reports/claimsByClient`;
+    } else if (selectedReport.label === 'Taxation Report of Client') {
+      apiUrl = `${backendURL}/api/v1/reports/taxReport`;
     } else {
       alert('Invalid report type selected!');
       return;
@@ -233,6 +263,11 @@ const IndividualReport = () => {
       title,
       description
     };
+
+    // Add year and regime for taxation report
+    if (selectedReport.label === "Taxation Report of Client") {
+      payload.year = selectedYear.value;
+    }
 
     if (selectedReport.label === "Scheme wise - Valution Report") {
       payload.schemeId = selectedScheme.id;
@@ -344,6 +379,28 @@ const IndividualReport = () => {
               },
             }}
           />
+        )}
+
+        {/* Show year and regime selection only for taxation report */}
+        {selectedReport?.label === "Taxation Report of Client" && (
+          <>
+            <Autocomplete
+              sx={inputStyles}
+              disablePortal
+              options={years}
+              value={selectedYear}
+              onChange={(event, value) => setSelectedYear(value)}
+              renderInput={(params) => <TextField {...params} label="Financial Year" />}
+              componentsProps={{
+                paper: {
+                  sx: {
+                    bgcolor: "grey",
+                    color: "black",
+                  },
+                },
+              }}
+            />
+          </>
         )}
 
         <Autocomplete

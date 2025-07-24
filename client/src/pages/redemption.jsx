@@ -80,8 +80,8 @@ const AddClient = () => {
       ...prev,
       [id]: value
     }));
-
-    if (fund && numValue > parseFloat(fund.totalInvested)) {
+    console.log(fund)
+    if (fund && numValue > parseFloat(fund.currentValue)) {
       setErrorMessages(prev => ({
         ...prev,
         [id]: 'Redeem amount exceeds total investment'
@@ -115,7 +115,7 @@ const AddClient = () => {
       const nav = currentValue / totalUnits;
       const units = amount / nav;
 
-      if (amount > Number(fund.totalInvested)) {
+      if (amount > Number(fund.currentValue)) {
         alert(`Cannot redeem ₹${amount} from ${fund.name}. Amount exceeds investment.`);
         return;
       }

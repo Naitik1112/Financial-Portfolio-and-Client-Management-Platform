@@ -8,6 +8,9 @@ const claimSchema = new mongoose.Schema({
   claim: {
     type: Number,
     required: true
+  },
+  tax: {
+    type: Number
   }
 });
 
@@ -16,6 +19,11 @@ const liSchema = new mongoose.Schema({
     type: String,
     required: [true, 'A policy must have a name'],
     trim: true
+  },
+  policyType: {
+    type: String,
+    enum: ['ULIP', 'Endowment', 'MoneyBack', 'Term'],
+    required: true
   },
   companyName: {
     type: String
@@ -53,6 +61,14 @@ const liSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  sumAssured: {
+    type: Number,
+    required: true
+  },
+  isHighValuePolicy: {
+    type: Boolean,
+    default: false // Can be set based on premium > ₹5L for HVP
+  },
   mode: {
     type: String,
     required: true
@@ -69,6 +85,49 @@ const liSchema = new mongoose.Schema({
     type: Number
   }
 });
+
+
+liSchema.pre('save', function (next) {
+  // 1. Set isHighValuePolicy
+  this.isHighValuePolicy = this.premium > 500000;
+
+  // 2. Set tax for each claim based on type and value
+  if (this.claim && this.claim.length > 0) {
+    this.claim = this.claim.map(cl => {
+      let tax = 0;
+
+      // Calculate tax based on ULIP or non-ULIP and sumAssured rules
+      const isULIP = this.policyType === 'ULIP';
+      const totalPremiumPaid = calculateTotalPremium(this.startPremiumDate, this.endPremiumDate, this.premium, this.mode);
+      const isSumAssuredEligible = this.sumAssured >= 10 * totalPremiumPaid;
+
+      if (isULIP) {
+        if (this.premium > 250000) tax = cl.claim * 0.05; // 5% for ULIP > ₹2.5L
+      } else {
+        if (!isSumAssuredEligible) tax = cl.claim * 0.05; // 5% if sumAssured not 10x
+      }
+
+      return { ...cl, tax };
+    });
+  }
+
+  next();
+});
+
+// Utility function to compute total premium paid over years
+function calculateTotalPremium(start, end, premium, mode) {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const years = (endDate.getFullYear() - startDate.getFullYear()) + 1;
+
+  switch (mode.toLowerCase()) {
+    case 'monthly': return premium * 12 * years;
+    case 'quarterly': return premium * 4 * years;
+    case 'half-yearly': return premium * 2 * years;
+    case 'yearly': return premium * 1 * years;
+    default: return premium * 1 * years;
+  }
+}
 
 const LifeInsurance = mongoose.model('LifeInsurance', liSchema);
 module.exports = LifeInsurance;

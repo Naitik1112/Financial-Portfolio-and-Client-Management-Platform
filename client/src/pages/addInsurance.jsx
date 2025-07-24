@@ -15,6 +15,36 @@ import { useThemeMode } from "../context/ThemeContext";
 
 
 const type = [{label:'Monthly'},{label:'Quaterly'},{label:'Half-Yearly'},{label:'Yearly'}]
+
+const policytype = [{label:'ULIP'},{label:'Endowment'},{label:'MoneyBack'},{label:'Term'}]
+
+const companyNames = 
+  [{label:'LIC'}
+  ,{label:'HDFC'}
+  ,{label:'Axis'}
+  ,{label:'ICIC'}
+  ,{label:'Kotak'}
+  ,{label:'Aditya Birla'}
+  ,{label:'TATA'}
+  ,{label:'SBI'}
+  ,{label:'Bajaj Allianz'}
+  ,{label:'PNB'}
+  ,{label:'Reliance Nippon'}
+  ,{label:'Aviva'}
+  ,{label:'Sahara'}
+  ,{label:'Bharti'}
+  ,{label:'Future Generali'}
+  ,{label:'Ageas Federal'}
+  ,{label:'Canara HSBC'}
+  ,{label:'Bandhan'}
+  ,{label:'Pramerica'}
+  ,{label:'Star Union Dai-ich'}
+  ,{label:'IndiaFirst'}
+  ,{label:'Edelweiss'}
+  ,{label:'Credit Access'}
+  ,{label:'Acko'}
+  ,{label:'Go Digit'}
+  ]
   
 const AddPolicy = () => {
   const [policyData, setPolicyData] = useState({
@@ -29,9 +59,10 @@ const AddPolicy = () => {
   const [maturityDate,setMaturityDate] = useState('')
   const [clientId, setClientId] = useState('');
   const [nominee1Id, setNominee1Id] = useState('');
-  const [nominee2Id, setNominee2Id] = useState('');
+  const [sumAssured, setSumAssured] = useState('');
   const [nominee3Id, setNominee3Id] = useState('');
   const [mode, setMode] = useState('');
+  const [policy, setPolicyType] = useState('');
 
   
   const [top100Films, setTop100Films] = useState([]);
@@ -130,9 +161,10 @@ const AddPolicy = () => {
             claim: parseFloat(c.premium),
           })),
           mode,
+          policyType : policy,
           clientId,
           nominee1ID: nominee1Id,
-          nominee2ID: nominee2Id,
+          sumAssured: sumAssured,
           nominee3ID: nominee3Id,
           policyName,
           companyName,
@@ -179,8 +211,22 @@ const AddPolicy = () => {
         <TextField id="outlined-basic-4" label="Policy Name" variant="outlined" onChange={(e) => setPolicyName(e.target.value)}
           sx={inputStyles}
         />
-        <TextField id="outlined-basic-5" label="Fund House" onChange={(e) => setCompanyName(e.target.value)} variant="outlined"
+
+        <Autocomplete 
           sx={inputStyles}
+          disablePortal
+          options={companyNames}
+          value={companyNames.find(option => option.label === companyName) || null}
+          onChange={(event, newValue) => setCompanyName(newValue?.label || '')}
+          renderInput={(params) => <TextField {...params} label="Company Name" />}
+          componentsProps={{
+            paper: {
+              sx: {
+                bgcolor: "grey", // Background color of the dropdown menu
+                color: "black",  // Text color (optional)
+              },
+            },
+          }}
         />
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker sx={inputStyles} label="Starting Date" onChange={(date) => setStartPremiumDate(date ? date.toISOString() : '')} />
@@ -194,8 +240,14 @@ const AddPolicy = () => {
       </Box>
   
       <Box sx={{display: 'flex',flexDirection: 'column',gap: 2,width: '45ch',}}>
-        <TextField id="outlined-basic-2" label="Premium" type="number" variant="outlined" onChange={(e) => setPremium(e.target.value)}
-            sx={inputStyles}/>
+        <TextField 
+          id="outlined-basic-2" 
+          label="Premium" 
+          type="number" 
+          variant="outlined" 
+          onChange={(e) => setPremium(e.target.value)}
+          sx={inputStyles}
+        />
         <Autocomplete 
           sx={inputStyles}
           disablePortal
@@ -242,37 +294,33 @@ const AddPolicy = () => {
             },
           }}
         />
-        <Autocomplete 
-          options={top100Films}
-          value={top100Films.find((option) => option.id === nominee2Id) || null}
-          onChange={(event, newValue) => setNominee2Id(newValue?.id || '')}
-          renderInput={(params) => <TextField {...params} label="Nominee 2" />}
+
+        <TextField 
+          id="outlined-basic-2" 
+          label="Sum Assured" 
+          type="number" 
+          variant="outlined" 
+          onChange={(e) => setSumAssured(e.target.value)}
           sx={inputStyles}
-          componentsProps={{
-            paper: {
-              sx: {
-                bgcolor: "grey", // Background color of the dropdown menu
-                color: "black",  // Text color (optional)
-              },
-            },
-          }}
         />
+
+
         <Autocomplete 
-          options={top100Films}
-          value={top100Films.find((option) => option.id === nominee3Id) || null}
-          onChange={(event, newValue) => setNominee3Id(newValue?.id || '')}
-          renderInput={(params) => <TextField {...params} label="Nominee 3" />}
+          sx={inputStyles}
+          disablePortal
+          options={policytype}
+          value={policytype.find(option => option.label === policy) || null}
+          onChange={(event, newValue) => setPolicyType(newValue?.label || '')}
+          renderInput={(params) => <TextField {...params} label="Policy Type" />}
           componentsProps={{
             paper: {
               sx: {
                 bgcolor: "grey", // Background color of the dropdown menu
                 color: "black",  // Text color (optional)
-                ...inputStyles
               },
             },
           }}
         />
-        
       </Box>
     </Box>
     

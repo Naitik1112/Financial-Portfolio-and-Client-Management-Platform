@@ -67,6 +67,8 @@ exports.getMutualFundByUser = catchAsync(async (req, res, next) => {
 });
 
 const calculateTax = (
+  schemeName,
+  category,
   purchaseDate,
   redeemDate,
   units,
@@ -74,14 +76,41 @@ const calculateTax = (
   navAtPurchase
 ) => {
   const holdingPeriod = (redeemDate - purchaseDate) / (1000 * 3600 * 24); // in days
-  const gainPerUnit = navAtRedemption - navAtPurchase;
-  const totalGain = gainPerUnit * units;
+  const gain = (navAtRedemption - navAtPurchase) * units;
+  const lowerName = schemeName.toLowerCase();
+  const cat = category.toLowerCase();
+  console.log(gain);
+  console.log(lowerName);
+  console.log(cat);
+  let taxType = '';
+  let tax = 0;
 
-  if (holdingPeriod <= 365) {
-    return { type: 'STCG', tax: 0.15 * totalGain };
+  if (
+    lowerName.includes('equity') ||
+    lowerName.includes('elss') ||
+    lowerName.includes('hybrid') ||
+    cat.includes('equity') ||
+    cat.includes('elss') ||
+    cat.includes('hybrid')
+  ) {
+    if (holdingPeriod > 365) {
+      taxType = 'LTCG';
+      const taxable = gain > 100000 ? gain - 100000 : 0;
+      tax = taxable * 0.1;
+    } else {
+      taxType = 'STCG';
+      tax = gain * 0.15;
+    }
+  } else if (lowerName.includes('debt') || cat.includes('debt')) {
+    taxType = 'STCG'; // All gains post-April 2023 taxed as per slab
+    tax = gain * 0.3; // Assuming highest slab
   } else {
-    return { type: 'LTCG', tax: 0.1 * totalGain };
+    taxType = 'UNKNOWN';
+    tax = 0;
   }
+  console.log(tax);
+  console.log(gain);
+  return { type: taxType, tax, gain };
 };
 
 exports.redeemUnits = catchAsync(async (req, res, next) => {
@@ -133,6 +162,8 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
     // Fetch latest NAV from API
     console.log(mf);
     let nav;
+    let name;
+    let cat;
     try {
       console.log(mf.AMFI);
       console.log(`https://api.mfapi.in/mf/${mf.AMFI}/latest`);
@@ -146,6 +177,8 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
         response.data.data[0]
       ) {
         nav = parseFloat(response.data.data[0].nav);
+        name = response.data.meta.scheme_name;
+        cat = response.data.meta.scheme_category;
       } else {
         throw new Error('Invalid API response');
       }
@@ -177,8 +210,10 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
 
       const purchaseNAV = mf.lumpsumAmount / mf.lumpsumUnits;
       const tax = calculateTax(
+        name,
+        cat,
         new Date(mf.lumpsumDate),
-        now,
+        new Date(now),
         unitsToRedeem,
         nav,
         purchaseNAV
@@ -194,7 +229,9 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
             redemptions: {
               date: now,
               units: unitsToRedeem,
-              nav
+              nav,
+              taxtype: tax.type,
+              tax: tax.tax
             }
           }
         }
@@ -217,8 +254,10 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
 
         const redeemNow = Math.min(unitsToRedeem, available);
         const tax = calculateTax(
+          name,
+          cat,
           new Date(tx.date),
-          now,
+          new Date(now),
           redeemNow,
           nav,
           tx.nav
@@ -237,7 +276,9 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
                 'sipTransactions.$.redemptions': {
                   date: now,
                   units: redeemNow,
-                  nav
+                  nav,
+                  taxtype: tax.type,
+                  tax: tax.tax
                 }
               }
             }
