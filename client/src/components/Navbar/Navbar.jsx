@@ -358,6 +358,9 @@ const Navbar = () => {
                         },
                       }
                     }}
+                    InputProps={{
+                      readOnly: true,
+                    }}
                     InputLabelProps={{
                       shrink: true,
                     }}

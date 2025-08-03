@@ -43,6 +43,39 @@ const createSendToken = (admin, statusCode, res) => {
   });
 };
 
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+exports.googleAuth = catchAsync(async (req, res, next) => {
+  const { credential } = req.body;
+  
+  const ticket = await client.verifyIdToken({
+    idToken: credential,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+
+  const payload = ticket.getPayload();
+  const { email, name, picture } = payload;
+
+  // Check if user exists
+  let admin = await Admin.findOne({ email });
+
+  if (!admin) {
+    // Create new admin with Google data
+    const randomPassword = crypto.randomBytes(8).toString('hex');
+    admin = await Admin.create({
+      companyName: `${name}'s Company`,
+      adminName: name,
+      email,
+      photo: picture,
+      password: randomPassword,
+      passwordConfirm: randomPassword
+    });
+  }
+
+  createSendToken(admin, 200, res);
+});
+
 exports.signup = catchAsync(async (req, res, next) => {
   const newAdmin = await Admin.create({
     companyName: req.body.companyName,

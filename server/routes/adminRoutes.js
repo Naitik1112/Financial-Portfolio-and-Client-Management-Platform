@@ -11,6 +11,8 @@ router.route('/login').post(adminAuthController.login);
 
 router.route('/logout').get(adminAuthController.logout);
 
+router.route('/google-auth').post(adminAuthController.googleAuth);
+
 router.route('/forgotPassword').post(adminAuthController.forgotPassword);
 
 router.route('/resetPassword/:token').patch(adminAuthController.resetPassword);
@@ -23,7 +25,9 @@ router.route('/getUsersOfAdmin').get(adminController.getUserOfAdmin);
 
 router.route('/getme').get(adminController.getme, adminController.getAdmin);
 
-router.route('/editme').patch(adminController.getme, adminController.updateAdmin);
+router
+  .route('/editme')
+  .patch(adminController.getme, adminController.updateAdmin);
 
 router.route('/numberOfClients').get(adminController.getNumberOfClient);
 
@@ -50,6 +54,5 @@ router
   .delete(adminController.deleteAdmin);
 
 router.route('/addAdmin').post(adminController.createOne);
-
 
 module.exports = router;

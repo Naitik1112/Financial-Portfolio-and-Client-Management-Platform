@@ -11,6 +11,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { Stack } from "@mui/material";
 import TextField from "@mui/material/TextField";
 import axios from "axios";
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 
 import { getStyles } from "../../styles/themeStyles";
 import { useThemeMode } from "../../context/ThemeContext";
@@ -32,6 +33,7 @@ const SignUpPage = () => {
 
   const navigate = useNavigate();
   const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -94,7 +96,6 @@ const SignUpPage = () => {
       });
   };
 
-
   const signupUser = (userData) => {
     setIsLoading(true);
     setAlertMessage("Your data is getting submitted...");
@@ -130,133 +131,182 @@ const SignUpPage = () => {
       });
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setIsLoading(true);
+    setAlertMessage("Signing up with Google...");
+    setAlertOpen(true);
+
+    try {
+      const response = await axios.post(`${backendURL}/api/v1/admin/google-auth`, {
+        credential: credentialResponse.credential,
+        isSignup: true // Flag to indicate this is a signup flow
+      }, { withCredentials: true });
+
+      const token = response.data.token;
+      localStorage.setItem('jwt', token);
+      setAlertMessage("Google signup successful!");
+      setIsLoading(false);
+      setTimeout(() => {
+        setAlertOpen(false);
+        navigate("/");
+      }, 2000);
+    } catch (error) {
+      console.error(error);
+      setAlertMessage(error.response?.data?.message || "Google signup failed. Please try again.");
+      setIsLoading(false);
+      setTimeout(() => {
+        setAlertOpen(false);
+      }, 3000);
+    }
+  };
+
+  const handleGoogleFailure = () => {
+    setAlertMessage("Google signup failed. Please try again.");
+    setAlertOpen(true);
+    setTimeout(() => {
+      setAlertOpen(false);
+    }, 3000);
+  };
 
   const handleLoginRedirect = () => {
     navigate("/signin");
   };
 
   return (
-    <div className="container" style={containerStyles1}>
-      {/* Alert Box */}
-      <Box sx={{ width: "100%" }}>
-        <Collapse in={alertOpen}>
-          <Alert
-            severity={isLoading ? "info" : alertMessage === "SignUp successful!" || alertMessage.includes("Login successful") ? "success" : "error"}
-            action={
-              !isLoading && (
-                <IconButton
-                  aria-label="close"
-                  color="inherit"
-                  size="small"
-                  onClick={() => setAlertOpen(false)}
-                >
-                  <CloseIcon fontSize="inherit" />
-                </IconButton>
-              )
-            }
-            sx={{ mb: 2 }}
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <div className="container" style={{ ...containerStyles1, maxWidth: "600px", width: "60ch" , marginTop : '80px' }}>
+        {/* Alert Box */}
+        <Box sx={{ width: "100%" }}>
+          <Collapse in={alertOpen}>
+            <Alert
+              severity={isLoading ? "info" : alertMessage.includes("successful") ? "success" : "error"}
+              action={
+                !isLoading && (
+                  <IconButton
+                    aria-label="close"
+                    color="inherit"
+                    size="small"
+                    onClick={() => setAlertOpen(false)}
+                  >
+                    <CloseIcon fontSize="inherit" />
+                  </IconButton>
+                )
+              }
+              sx={{ mb: 2 }}
+            >
+              {alertMessage}
+            </Alert>
+          </Collapse>
+        </Box>
+
+        {/* SignUp Form */}
+        <form onSubmit={handleSubmit}>
+          <h1>SignUp</h1>
+          
+          <Box sx={{ marginBottom: '20px', marginTop: '40px' }}>
+            <TextField
+              label="Company Name"
+              name="companyName"
+              variant="outlined"
+              fullWidth
+              required
+              value={formData.companyName}
+              onChange={handleChange}
+              sx={inputStyles}
+            />
+          </Box>
+
+          <Box sx={{ marginBottom: '20px' }}>
+            <TextField
+              label="Admin Name"
+              name="adminName"
+              variant="outlined"
+              fullWidth
+              required
+              value={formData.adminName}
+              onChange={handleChange}
+              sx={inputStyles}
+            />
+          </Box>
+
+          <Box sx={{ marginBottom: '20px' }}>
+            <TextField
+              label="Email"
+              name="email"
+              variant="outlined"
+              fullWidth
+              required
+              value={formData.email}
+              onChange={handleChange}
+              sx={inputStyles}
+            />
+          </Box>
+
+          <Box sx={{ marginBottom: '20px' }}>
+            <TextField
+              label="Password"
+              name="password"
+              variant="outlined"
+              type="password"
+              fullWidth
+              required
+              value={formData.password}
+              onChange={handleChange}
+              sx={inputStyles}
+            />
+          </Box>
+
+          <Box sx={{ marginBottom: '40px' }}>
+            <TextField
+              label="Confirm Password"
+              name="passwordConfirm"
+              variant="outlined"
+              type="password"
+              fullWidth
+              required
+              value={formData.passwordConfirm}
+              onChange={handleChange}
+              sx={inputStyles}
+            />
+          </Box>
+
+          <Button type="submit" variant="contained" fullWidth sx={buttonStyles}>
+            SignUp
+          </Button>
+
+          {/* Demo User SignUp Button */}
+          <Button 
+            onClick={loginDemoUser}
+            variant="outlined" 
+            fullWidth 
+            sx={{...buttonStyles, marginTop: '10px'}}
           >
-            {alertMessage}
-          </Alert>
-        </Collapse>
+            Login as Demo User
+          </Button>
 
-      </Box>
+          {/* Google Sign-Up Button */}
+            <div style={{ marginTop: '16px', borderRadius: '10px', overflow: 'hidden', width: '100%' }}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleFailure}
+                text="signup_with"
+                shape="rectangular"
+                size="large"
+                width="100%"
+              />
+            </div>
 
-      {/* SignUp Form */}
-      <form onSubmit={handleSubmit}>
-        <h1>Admin SignUp</h1>
-        
-        <Box sx={{ marginBottom: '20px', marginTop: '40px' }}>
-          <TextField
-            label="Company Name"
-            name="companyName"
-            variant="outlined"
-            fullWidth
-            required
-            value={formData.companyName}
-            onChange={handleChange}
-            sx={inputStyles}
-          />
-        </Box>
-
-        <Box sx={{ marginBottom: '20px' }}>
-          <TextField
-            label="Admin Name"
-            name="adminName"
-            variant="outlined"
-            fullWidth
-            required
-            value={formData.adminName}
-            onChange={handleChange}
-            sx={inputStyles}
-          />
-        </Box>
-
-        <Box sx={{ marginBottom: '20px' }}>
-          <TextField
-            label="Email"
-            name="email"
-            variant="outlined"
-            fullWidth
-            required
-            value={formData.email}
-            onChange={handleChange}
-            sx={inputStyles}
-          />
-        </Box>
-
-        <Box sx={{ marginBottom: '20px' }}>
-          <TextField
-            label="Password"
-            name="password"
-            variant="outlined"
-            type="password"
-            fullWidth
-            required
-            value={formData.password}
-            onChange={handleChange}
-            sx={inputStyles}
-          />
-        </Box>
-
-        <Box sx={{ marginBottom: '40px' }}>
-          <TextField
-            label="Confirm Password"
-            name="passwordConfirm"
-            variant="outlined"
-            type="password"
-            fullWidth
-            required
-            value={formData.passwordConfirm}
-            onChange={handleChange}
-            sx={inputStyles}
-          />
-        </Box>
-
-        <Button type="submit" variant="contained" fullWidth sx={buttonStyles}>
-          SignUp
-        </Button>
-
-        {/* Demo User SignUp Button */}
-        <Button 
-          onClick={loginDemoUser}
-          variant="outlined" 
-          fullWidth 
-          sx={{...buttonStyles, marginTop: '10px'}}
-        >
-          Login as Demo User
-        </Button>
-
-        <div className="register-link">
-          <p>
-            Already have an account? 
-            <a href="#" onClick={handleLoginRedirect} style={{ marginLeft: '5px', cursor: 'pointer' }}>
-              Login here!
-            </a>
-          </p>
-        </div>
-      </form>
-    </div>
+          <div className="register-link">
+            <p>
+              Already have an account? 
+              <a href="#" onClick={handleLoginRedirect} style={{ marginLeft: '5px', cursor: 'pointer' }}>
+                Login here!
+              </a>
+            </p>
+          </div>
+        </form>
+      </div>
+    </GoogleOAuthProvider>
   );
 };
 
