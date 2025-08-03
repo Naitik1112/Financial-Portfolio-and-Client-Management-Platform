@@ -1,19 +1,10 @@
 const multer = require('multer');
 const sharp = require('sharp');
+const Admin = require('./../models/adminModels');
 const User = require('./../models/userModels');
 const AppError = require('./../utils/appError');
 const CatchAsync = require('./../utils/catchAsync');
 const factory = require('./handlerFactory');
-
-// const multerStorage = multer.diskStorage({
-//   destination: (req, file, cb) => {
-//     cb(null, 'public/img/users');
-//   },
-//   filename: (req, file, cb) => {
-//     const ext = file.mimetype.split('/')[1];
-//     cb(null, `user-${req.user.id}-${Date.now()}.${ext}`);
-//   }
-// });
 
 const multerStorage = multer.memoryStorage();
 
@@ -30,17 +21,17 @@ const upload = multer({
   fileFilter: multerFilter
 });
 
-exports.uploadUserPhoto = upload.single('photo');
+exports.uploadAdminPhoto = upload.single('photo');
 
-exports.resizeUserPhoto = CatchAsync(async (req, res, next) => {
+exports.resizeAdminPhoto = CatchAsync(async (req, res, next) => {
   if (!req.file) return next();
 
-  req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`;
+  req.file.filename = `admin-${req.admin.id}-${Date.now()}.jpeg`;
   await sharp(req.file.buffer)
     .resize(500, 500)
     .toFormat('jpeg')
     .jpeg({ quality: 90 })
-    .toFile(`public/img/users/${req.file.filename}`);
+    .toFile(`public/img/admins/${req.file.filename}`);
 
   next();
 });
@@ -54,12 +45,12 @@ const filterObj = (obj, ...allowedFields) => {
 };
 
 exports.getme = (req, res, next) => {
-  req.params.id = req.user.id;
+  req.params.id = req.admin.id;
   next();
 };
 
 exports.updateMe = CatchAsync(async (req, res, next) => {
-  // 1) Create error if user POSTs password data
+  // 1) Create error if admin POSTs password data
   if (req.body.password || req.body.passwordConfirm) {
     return next(
       new AppError(
@@ -70,25 +61,29 @@ exports.updateMe = CatchAsync(async (req, res, next) => {
   }
 
   // 2) Filtered out unwanted fields names that are not allowed to be updated
-  const filteredBody = filterObj(req.body, 'name', 'email');
+  const filteredBody = filterObj(req.body, 'adminName', 'email');
   if (req.file) filteredBody.photo = req.file.filename;
 
-  // 3) Update user document
-  const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
-    new: true,
-    runValidators: true
-  });
+  // 3) Update admin document
+  const updatedAdmin = await Admin.findByIdAndUpdate(
+    req.admin.id,
+    filteredBody,
+    {
+      new: true,
+      runValidators: true
+    }
+  );
 
   res.status(200).json({
     status: 'success',
     data: {
-      user: updatedUser
+      admin: updatedAdmin
     }
   });
 });
 
 exports.deleteMe = CatchAsync(async (req, res, next) => {
-  await User.findByIdAndUpdate(req.user.id, { active: false });
+  await Admin.findByIdAndUpdate(req.admin.id, { active: false });
 
   res.status(200).json({
     status: 'success',
@@ -96,21 +91,18 @@ exports.deleteMe = CatchAsync(async (req, res, next) => {
   });
 });
 
-exports.getAllUsers = CatchAsync(async (req, res, next) => {
-
-  const adminId = req.admin.id
-  
-  const users = await User.find({ adminId }).populate('groupId', 'name');
+exports.getAllAdmins = CatchAsync(async (req, res, next) => {
+  const admins = await Admin.find().populate('adminName');
 
   res.status(200).json({
     status: 'success',
-    results: users.length,
-    data: users
+    results: admins.length,
+    data: admins
   });
 });
 
 exports.updateMyPassword = CatchAsync(async (req, res, next) => {
-  // 1) Create error if user POSTs password data
+  // 1) Create error if admin POSTs password data
   if (req.body.password || req.body.passwordConfirm) {
     return next(
       new AppError(
@@ -121,37 +113,41 @@ exports.updateMyPassword = CatchAsync(async (req, res, next) => {
   }
 
   // 2) Filtered out unwanted fields names that are not allowed to be updated
-  const filteredBody = filterObj(req.body, 'name', 'email');
+  const filteredBody = filterObj(req.body, 'adminName', 'email');
   if (req.file) filteredBody.photo = req.file.filename;
 
-  // 3) Update user document
-  const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
-    new: true,
-    runValidators: true
-  });
+  // 3) Update admin document
+  const updatedAdmin = await Admin.findByIdAndUpdate(
+    req.admin.id,
+    filteredBody,
+    {
+      new: true,
+      runValidators: true
+    }
+  );
 
   res.status(200).json({
     status: 'success',
     data: {
-      user: updatedUser
+      admin: updatedAdmin
     }
   });
 });
 
-exports.getUser = CatchAsync(async (req, res, next) => {
+exports.getAdmin = CatchAsync(async (req, res, next) => {
   const { id } = req.params;
 
-  const user = await User.findById(id).populate('groupId', 'name');
+  const admin = await Admin.findById(id);
 
-  if (!user) return next(new AppError('User not found', 404));
+  if (!admin) return next(new AppError('Admin not found', 404));
 
   res.status(200).json({
     status: 'success',
-    data: user
+    data: admin
   });
 });
 
-exports.createUser = (req, res) => {
+exports.createAdmin = (req, res) => {
   res.status(500).json({
     status: 'error',
     message: 'This route is not defined! Please use signup instead'
@@ -159,7 +155,7 @@ exports.createUser = (req, res) => {
 };
 
 exports.getNumberOfClient = CatchAsync(async (req, res, next) => {
-  const numberOfClients = await User.countDocuments();
+  const numberOfClients = await Admin.countDocuments();
 
   res.status(200).json({
     status: 'success',
@@ -172,12 +168,13 @@ exports.getNumberOfClient = CatchAsync(async (req, res, next) => {
 exports.getRecentClients = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10; // default to 10
-    const adminId = req.admin.id
 
-    const recentClients = await User.find({ role: { $in: ['user'] } , adminId: adminId})
+    const recentClients = await Admin.find({
+      role: { $in: ['admin', 'admin'] }
+    })
       .sort({ createdAt: -1 }) // newest first
       .limit(limit)
-      .select('name email createdAt'); // You can add more fields as needed
+      .select('adminName email createdAt'); // You can add more fields as needed
 
     res.status(200).json({
       status: 'success',
@@ -194,7 +191,29 @@ exports.getRecentClients = async (req, res) => {
   }
 };
 
-exports.updateUser = factory.updateOne(User);
-exports.deleteUser = factory.deleteOne(User);
+exports.getUserOfAdmin = async (req, res) => {
+  try {
+    const adminId = req.admin.id;
 
-exports.createOne = factory.createOne(User);
+    const users = await User.find({ adminId });
+
+    res.status(200).json({
+      status: 'success',
+      results: users.length,
+      data: {
+        users
+      }
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Something went wrong',
+      error: err.message
+    });
+  }
+};
+
+exports.updateAdmin = factory.updateOne(Admin);
+exports.deleteAdmin = factory.deleteOne(Admin);
+
+exports.createOne = factory.createOne(Admin);

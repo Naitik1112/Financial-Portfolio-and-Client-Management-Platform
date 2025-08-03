@@ -1,11 +1,19 @@
 const mongoose = require('mongoose');
 
 const BusinessSchema = new mongoose.Schema({
+  adminId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin',
+    required: false
+  },
   timestamp: { type: Date, default: Date.now },
   AUM: Number,
   sipTotalBook: Number,
   lumpsumTotal: Number,
-  lifeInsuranceTotal: Number,
+  lifeInsuranceTotal: {
+    type: Number,
+    default: 0
+  },
   generalInsuranceTotal: Number,
   fdTotalAmount: Number,
   date: Date,
@@ -13,7 +21,10 @@ const BusinessSchema = new mongoose.Schema({
   todayLumpsum: Number,
   todayRedemption: Number,
   todayGeneralInsurance: Number,
-  todayLifeInsurance: Number,
+  todayLifeInsurance: {
+    type: Number,
+    default: 0  // Add this to ensure it's never undefined
+  },
   todayDebt: Number
 });
 

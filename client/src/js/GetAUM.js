@@ -12,12 +12,15 @@ export const fetchAUM = async () => {
     const backendURL = import.meta.env.VITE_BACKEND_URL;
     const token = localStorage.getItem('jwt');
 
-    const response = await axios.get(`${backendURL}/api/v1/dashboard/getAUM`, {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
+    const response = await axios.get(
+      `${backendURL}/api/v1/dashboard/getAUMByAdmin`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
       }
-    });
+    );
     if (response.data && response.data.status === 'success') {
       return response.data.data;
     } else {

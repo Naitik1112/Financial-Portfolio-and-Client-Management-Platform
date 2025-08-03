@@ -47,9 +47,11 @@ exports.convertNameToId = catchAsync(async (req, res, next) => {
 
 exports.getMutualFundByUser = catchAsync(async (req, res, next) => {
   const userId = req.params.id;
-  console.log(userId);
-  const mutualFunds = await MF.find({ holderId: userId });
-  console.log(mutualFunds.length);
+
+  const adminId = req.admin.id
+
+  const mutualFunds = await MF.find({ holderId: userId , adminId : adminId});
+
   if (!mutualFunds.length) {
     return res.status(404).json({
       status: 'fail',
@@ -79,9 +81,6 @@ const calculateTax = (
   const gain = (navAtRedemption - navAtPurchase) * units;
   const lowerName = schemeName.toLowerCase();
   const cat = category.toLowerCase();
-  console.log(gain);
-  console.log(lowerName);
-  console.log(cat);
   let taxType = '';
   let tax = 0;
 

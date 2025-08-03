@@ -7,12 +7,219 @@ const dayjs = require('dayjs');
 const utc = require('dayjs/plugin/utc');
 const timezone = require('dayjs/plugin/timezone');
 const axios = require('axios');
+const mongoose = require('mongoose');
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 exports.getTodayBusiness = CatchAsync(async (req, res) => {
   const now = new Date();
+  const todayStr = dayjs(now).format('YYYY-MM-DD');
+  const formatDate = d => new Date(d).toISOString().split('T')[0];
+
+  // Get all adminIds from any collection (assuming all collections have adminId)
+  const adminIds = await Mutual.distinct('adminId');
+
+  const result = {};
+
+  for (const adminId of adminIds) {
+    // 1. SIP + LUMPSUM + REDEMPTION
+    const mutualData = await Mutual.find({ adminId });
+    let totalSip = 0;
+    let totalLumpsum = 0;
+    let totalRedemption = 0;
+    const todayDay = now.getDate();
+
+    for (const item of mutualData) {
+      if (item.investmentType === 'sip') {
+        if (item.sipDay === todayDay) {
+          totalSip += item.sipAmount || 0;
+        }
+        for (const txn of item.sipTransactions || []) {
+          for (const red of txn.redemptions || []) {
+            const redDate = formatDate(red.date);
+            if (redDate === todayStr) {
+              totalRedemption += (red.units || 0) * (red.nav || 0);
+            }
+          }
+        }
+      }
+
+      if (item.investmentType === 'lumpsum') {
+        if (formatDate(item.lumpsumDate) === todayStr) {
+          totalLumpsum += item.lumpsumAmount || 0;
+        }
+        for (const txn of item.redemptions || []) {
+          const redDate = formatDate(txn.date);
+          if (redDate === todayStr) {
+            totalRedemption += (txn.units || 0) * (txn.nav || 0);
+          }
+        }
+      }
+    }
+
+    // 2. General Insurance
+    const generalData = await GeneralInsurance.find({ adminId });
+    let totalGeneral = 0;
+    const currentYear = new Date().getFullYear();
+
+    for (const item of generalData) {
+      const startDate = formatDate(item.startPremiumDate);
+      if (startDate === todayStr) {
+        for (const prem of item.premium || []) {
+          if (prem.year === currentYear) {
+            totalGeneral += prem.premium1 || 0;
+          }
+        }
+      }
+    }
+
+    // 3. Life Insurance
+    const lifeData = await LifeInsurance.find({ adminId });
+    let totalLife = 0;
+
+    for (const item of lifeData) {
+      const startDate = formatDate(item.startPremiumDate);
+      if (startDate === todayStr) {
+        totalLife += item.premium || 0;
+      }
+    }
+
+    // 4. Debt
+    const fdData = await FD.find({ adminId });
+    let totalDebt = 0;
+
+    for (const item of fdData) {
+      const startDate = formatDate(item.startDate);
+      if (startDate === todayStr) {
+        totalDebt += item.amount || 0;
+      }
+    }
+
+    result[adminId] = {
+      date: todayStr,
+      todaySip: totalSip,
+      todayLumpsum: totalLumpsum,
+      todayRedemption: totalRedemption,
+      todayGeneralInsurance: totalGeneral,
+      todayLifeInsurance: totalLife,
+      todayDebt: totalDebt
+    };
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: result
+  });
+});
+
+exports.getAUMBreakdown = CatchAsync(async (req, res) => {
+  const adminIds = await Mutual.distinct('adminId');
+  const result = {};
+
+  const getNav = async schemeCode => {
+    const { data } = await axios.get(
+      `https://api.mfapi.in/mf/${schemeCode}/latest`,
+      {
+        headers: {
+          Authorization: undefined
+        }
+      }
+    );
+    if (data.status !== 'SUCCESS')
+      throw new Error(`Failed to fetch NAV for ${schemeCode}`);
+    return parseFloat(data.data[0].nav);
+  };
+
+  for (const adminId of adminIds) {
+    const mutualFunds = await Mutual.find({ adminId });
+    const lifePolicies = await LifeInsurance.find({ adminId });
+    const generalPolicies = await GeneralInsurance.find({ adminId });
+    const fds = await FD.find({ adminId });
+
+    let totalAUM = 0;
+    let sipTotalBook = 0;
+    let lumpsumTotal = 0;
+    const breakdown = [];
+
+    // Mutual Fund processing
+    for (const fund of mutualFunds) {
+      const schemeCode = fund.AMFI;
+      const nav = await getNav(schemeCode);
+
+      let totalUnits = 0;
+
+      if (fund.investmentType === 'sip') {
+        totalUnits = fund.sipTransactions.reduce(
+          (sum, tx) => sum + (tx.units ?? 0),
+          0
+        );
+      } else {
+        totalUnits = fund.lumpsumUnits ?? 0;
+      }
+
+      totalUnits -= fund.redeemedUnits ?? 0;
+      totalUnits = Math.max(totalUnits, 0);
+
+      const currentVal = totalUnits * nav;
+      totalAUM += currentVal;
+
+      if (fund.investmentType === 'sip') {
+        sipTotalBook += currentVal;
+      } else {
+        lumpsumTotal += currentVal;
+      }
+
+      breakdown.push({
+        schemeName: fund.schemeName,
+        investmentType: fund.investmentType,
+        units: totalUnits,
+        nav,
+        value: currentVal
+      });
+    }
+
+    // Life Insurance
+    let lifeInsuranceTotal = 0;
+    for (const policy of lifePolicies) {
+      lifeInsuranceTotal += policy.premium ?? 0;
+    }
+
+    // General Insurance
+    let generalInsuranceTotal = 0;
+    for (const policy of generalPolicies) {
+      const premiums = policy.premium ?? [];
+      generalInsuranceTotal += premiums.reduce(
+        (sum, p) => sum + (p.premium1 ?? 0),
+        0
+      );
+    }
+
+    // FDs
+    let fdTotalAmount = 0;
+    for (const fd of fds) {
+      fdTotalAmount += fd.amount ?? 0;
+    }
+
+    result[adminId] = {
+      AUM: totalAUM,
+      sipTotalBook: sipTotalBook,
+      lumpsumTotal: lumpsumTotal,
+      lifeInsuranceTotal: lifeInsuranceTotal,
+      generalInsuranceTotal: generalInsuranceTotal,
+      fdTotalAmount: fdTotalAmount
+    };
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: result
+  });
+});
+
+exports.getTodayBusinessByAdmin = CatchAsync(async (req, res) => {
+  const now = new Date();
+  const adminId = mongoose.Types.ObjectId(req.admin.id);
   console.log('now:', now);
 
   // ✅ Get today's date in IST (local time)
@@ -24,7 +231,7 @@ exports.getTodayBusiness = CatchAsync(async (req, res) => {
   const formatDate = d => new Date(d).toISOString().split('T')[0];
 
   // 1. SIP + LUMPSUM + REDEMPTION
-  const mutualData = await Mutual.find();
+  const mutualData = await Mutual.find(adminId);
 
   let totalSip = 0;
   let totalLumpsum = 0;
@@ -65,7 +272,7 @@ exports.getTodayBusiness = CatchAsync(async (req, res) => {
   }
 
   // 2. General Insurance
-  const generalData = await GeneralInsurance.find();
+  const generalData = await GeneralInsurance.find(adminId);
   let totalGeneral = 0;
 
   for (const item of generalData) {
@@ -82,7 +289,7 @@ exports.getTodayBusiness = CatchAsync(async (req, res) => {
   }
 
   // 3. Life Insurance
-  const lifeData = await LifeInsurance.find();
+  const lifeData = await LifeInsurance.find(adminId);
   let totalLife = 0;
 
   for (const item of lifeData) {
@@ -93,7 +300,7 @@ exports.getTodayBusiness = CatchAsync(async (req, res) => {
   }
 
   // 4. Debt
-  const fdData = await FD.find();
+  const fdData = await FD.find(adminId);
   let totalDebt = 0;
 
   for (const item of fdData) {
@@ -118,11 +325,12 @@ exports.getTodayBusiness = CatchAsync(async (req, res) => {
   });
 });
 
-exports.getAUMBreakdown = CatchAsync(async (req, res) => {
-  const mutualFunds = await Mutual.find({});
-  const lifePolicies = await LifeInsurance.find({});
-  const generalPolicies = await GeneralInsurance.find({});
-  const fds = await FD.find({});
+exports.getAUMBreakdownByAdmin = CatchAsync(async (req, res) => {
+  const adminId = req.admin.id;
+  const mutualFunds = await Mutual.find({ adminId });
+  const lifePolicies = await LifeInsurance.find({ adminId });
+  const generalPolicies = await GeneralInsurance.find({ adminId });
+  const fds = await FD.find({ adminId });
 
   const getNav = async schemeCode => {
     const { data } = await axios.get(
@@ -220,6 +428,8 @@ exports.getAUMBreakdown = CatchAsync(async (req, res) => {
 exports.getFDsMaturingThisMonth = CatchAsync(async (req, res, next) => {
   const now = new Date();
 
+  const adminId = req.admin.id;
+
   // First day of the current month
   const monthStart = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0)
@@ -234,7 +444,8 @@ exports.getFDsMaturingThisMonth = CatchAsync(async (req, res, next) => {
     MaturityDate: {
       $gte: monthStart,
       $lte: monthEnd
-    }
+    },
+    adminId
   });
 
   res.status(200).json({
@@ -305,10 +516,25 @@ exports.getRecentlyRedeemedFunds = CatchAsync(async (req, res, next) => {
 });
 
 exports.getRecentClaims = CatchAsync(async (req, res, next) => {
+  const adminId = req.admin.id; // Changed from req.admin.id to req.admin._id
+
   const recentClaims = await GeneralInsurance.aggregate([
+    // First match documents for this admin
+    { $match: { adminId: mongoose.Types.ObjectId(adminId) } },
+
+    // Unwind the claims array
     { $unwind: '$claims' },
+
+    // Sort claims by requestDate (descending) before limiting
+    { $sort: { 'claims.requestDate': -1 } },
+
+    // Limit to 10 most recent claims
+    { $limit: 10 },
+
+    // Project the fields we want
     {
       $project: {
+        _id: 0, // Exclude the default _id
         generalInsuranceId: '$_id',
         policyName: 1,
         companyName: 1,
@@ -318,30 +544,37 @@ exports.getRecentClaims = CatchAsync(async (req, res, next) => {
         requestDate: '$claims.requestDate',
         claim: '$claims.claim',
         approvalDate: '$claims.approvalDate',
-        approvalClaim: '$claims.approvalClaim'
+        approvalClaim: '$claims.approvalClaim',
+        adminId: 1 // Include if needed
       }
     },
+
+    // Lookup client data
     {
       $lookup: {
-        from: 'users', // name of the collection in lowercase and plural usually
+        from: 'users',
         localField: 'clientId',
         foreignField: '_id',
         as: 'clientData'
       }
     },
+
+    // Unwind the clientData array (assuming one-to-one relationship)
     { $unwind: '$clientData' },
+
+    // Add client name field
     {
       $addFields: {
-        clientName: '$clientData.name' // adjust field based on your schema
+        clientName: '$clientData.name'
       }
     },
+
+    // Remove the full clientData object
     {
       $project: {
-        clientData: 0 // optionally remove full clientData object
+        clientData: 0
       }
-    },
-    { $sort: { requestDate: -1 } },
-    { $limit: 10 }
+    }
   ]);
 
   res.status(200).json({

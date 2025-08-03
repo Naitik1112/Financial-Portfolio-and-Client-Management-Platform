@@ -3,55 +3,35 @@ const mongoose = require('mongoose');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema(
+const adminSchema = new mongoose.Schema(
   {
-    adminId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Admin',
-      required: false
-    },
-    name: {
+    companyName: {
       type: String,
-      required: [true, 'A user must have a name'],
+      required: [true, 'A company must have a name'],
+      trim: true,
+      unique: true
+    },
+    adminName: {
+      type: String,
+      required: [true, 'A admin must have a name'],
       trim: true,
       unique: true
     },
     email: {
       type: String,
-      required: [true, 'A user should have an email'],
+      required: [true, 'A admin should have an email'],
       lowercase: true,
       validate: [validator.isEmail, 'Please provide a valid email']
     },
     photo: {
       type: String,
-      default: 'default.jpg'
-    },
-    groupId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Group',
-      default: null
-    },
-    pancard: {
-      type: String,
-      default: ''
-    },
-    role: {
-      type: String,
-      enum: ['user', 'guide', 'lead-guide', 'admin'],
-      default: 'user'
+      default: 'default.jpg',
     },
     password: {
       type: String,
       required: [true, 'Password is required'],
       minlength: 8,
       select: false
-    },
-    DOB: {
-      type: Date,
-      required: true
-    },
-    contact: {
-      type: Number
     },
     passwordConfirm: {
       type: String,
@@ -85,15 +65,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Virtual property to calculate age
-userSchema.virtual('age').get(function() {
-  if (!this.DOB) return null;
-  const ageDiff = Date.now() - this.DOB.getTime();
-  const ageDate = new Date(ageDiff);
-  return Math.abs(ageDate.getUTCFullYear() - 1970);
-});
-
-userSchema.pre('save', async function(next) {
+adminSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
 
   this.password = await bcrypt.hash(this.password, 12);
@@ -101,26 +73,26 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
-userSchema.pre('save', function(next) {
+adminSchema.pre('save', function(next) {
   if (!this.isModified('password') || this.isNew) return next();
 
   this.passwordChangedAt = Date.now() - 1000;
   next();
 });
 
-userSchema.pre(/^find/, function(next) {
+adminSchema.pre(/^find/, function(next) {
   this.find({ active: { $ne: false } });
   next();
 });
 
-userSchema.methods.correctPassword = async function(
+adminSchema.methods.correctPassword = async function(
   candidatePassword,
-  userPassword
+  adminPassword
 ) {
-  return await bcrypt.compare(candidatePassword, userPassword);
+  return await bcrypt.compare(candidatePassword, adminPassword);
 };
 
-userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
+adminSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
   if (this.passwordChangedAt) {
     const changedTimestamp = parseInt(
       this.passwordChangedAt.getTime() / 1000,
@@ -131,7 +103,7 @@ userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
   return false;
 };
 
-userSchema.methods.createPasswordResetToken = function() {
+adminSchema.methods.createPasswordResetToken = function() {
   const resetToken = crypto.randomBytes(32).toString('hex');
 
   this.passwordResetToken = crypto
@@ -144,6 +116,6 @@ userSchema.methods.createPasswordResetToken = function() {
   return resetToken;
 };
 
-const User = mongoose.model('User', userSchema);
+const Admin = mongoose.model('Admin', adminSchema);
 
-module.exports = User;
+module.exports = Admin;

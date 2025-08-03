@@ -50,8 +50,10 @@ exports.convertNameToId = catchAsync(async (req, res, next) => {
 
 exports.getDebtByUser = catchAsync(async (req, res, next) => {
     const userId = req.params.id;
+
+    const adminId = req.admin.id;
   
-    const Debts = await Debt.find({ holderId: userId });
+    const Debts = await Debt.find({ holderId: userId , adminId});
   
     if (!Debts.length) {
       return res.status(404).json({

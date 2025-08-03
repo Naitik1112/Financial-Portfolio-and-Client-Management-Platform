@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { fetchAndStoreSnapshot } = require('../utils/snapshotUtils');
 const businessController = require('../controllers/businessController');
+const authController = require('../controllers/authContriller');
 
 router.get('/trigger', async (req, res) => {
   try {
@@ -26,6 +27,8 @@ router.get(
   '/fake-business-snapshots',
   businessController.getFakeBusinessSnapshots
 );
+
+router.use(authController.protect);
 
 router.get(
   '/business-snapshot/:type',

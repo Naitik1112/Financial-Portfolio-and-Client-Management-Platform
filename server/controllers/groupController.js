@@ -5,9 +5,9 @@ const AppError = require('../utils/appError');
 
 // 1. Create a new group
 exports.createGroup = CatchAsync(async (req, res, next) => {
-  const { name } = req.body;
+  const { name , adminId } = req.body;
 
-  const group = await Group.create({ name });
+  const group = await Group.create({ name , adminId });
 
   res.status(201).json({
     status: 'success',
@@ -56,7 +56,8 @@ exports.addUserToGroup = CatchAsync(async (req, res, next) => {
 
 // 4. Get all group names
 exports.getAllGroupNames = CatchAsync(async (req, res, next) => {
-  const groups = await Group.find({}, 'name');
+  const adminId = req.admin.id
+  const groups = await Group.find({adminId}, 'name');
   res.status(200).json({
     status: 'success',
     data: groups

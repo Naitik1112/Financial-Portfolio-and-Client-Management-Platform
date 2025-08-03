@@ -88,8 +88,8 @@ const Home = () => {
   const [userName, setUserName] = useState("User");
   const navigate = useNavigate();
 
-  const [aumTimePeriod, setAumTimePeriod] = useState('week');
-  const [businessTimePeriod, setBusinessTimePeriod] = useState('week');
+  const [aumTimePeriod, setAumTimePeriod] = useState('month');
+  const [businessTimePeriod, setBusinessTimePeriod] = useState('month');
   const [aumData, setAumData] = useState([]);
   const [businessData, setBusinessData] = useState([]);
   
@@ -168,8 +168,9 @@ const Home = () => {
         
         // Fetch logged in user
         const userResponse = await fetchLoggedInUser();
-        if (userResponse?.data?.name) {
-          setUserName(userResponse.data.name);
+        console.log("userResponse : ",userResponse)
+        if (userResponse?.adminName) {
+          setUserName(userResponse.adminName);
         }
 
         // Fetch total clients count
@@ -463,14 +464,6 @@ const Home = () => {
                 <Box>
                   <Button 
                     size="small" 
-                    color={aumTimePeriod === 'week' ? 'primary' : 'inherit'}
-                    onClick={() => setAumTimePeriod('week')}
-                    sx={{ minWidth: 0, color: aumTimePeriod === 'week' ? '#1976D2' : '#bbb' }}
-                  >
-                    Week
-                  </Button>
-                  <Button 
-                    size="small" 
                     color={aumTimePeriod === 'month' ? 'primary' : 'inherit'}
                     onClick={() => setAumTimePeriod('month')}
                     sx={{ minWidth: 0, color: aumTimePeriod === 'month' ? '#1976D2' : '#bbb' }}
@@ -574,14 +567,6 @@ const Home = () => {
                 <Box>
                   <Button 
                     size="small" 
-                    color={businessTimePeriod === 'week' ? 'primary' : 'inherit'}
-                    onClick={() => setBusinessTimePeriod('week')}
-                    sx={{ minWidth: 0, color: businessTimePeriod === 'week' ? '#1976D2' : '#bbb' }}
-                  >
-                    Week
-                  </Button>
-                  <Button 
-                    size="small" 
                     color={businessTimePeriod === 'month' ? 'primary' : 'inherit'}
                     onClick={() => setBusinessTimePeriod('month')}
                     sx={{ minWidth: 0, color: businessTimePeriod === 'month' ? '#1976D2' : '#bbb' }}
@@ -647,6 +632,202 @@ const Home = () => {
               sx={{
                 ...containerStyles,
                 height: { xs: 'auto', md: '400px' },
+              }}
+            >
+              <Typography variant="h6" sx={{ color: '#fff', mb: 1 }}>
+                Product Mix
+              </Typography>
+              <Box 
+                sx={{
+                  height: { xs: 'auto', md: 'calc(100% - 40px)' }, // Subtract the height of the Typography
+                  display: 'flex',
+                  flexDirection: { xs: 'column', md: 'row' },
+                  overflow: 'hidden',
+                  gap: 1
+                }}
+              >
+                {/* Pie Chart Box */}
+                <Box
+                  sx={{
+                    width: { xs: '100%', md: '50%' },
+                    height: { xs: '300px', md: '100%' }, // Fixed height on xs, full height on md
+                    minHeight: 0, // Important for proper containment
+                    flexShrink: 0,
+                    p: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={productMixData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius="80%"
+                        innerRadius="60%"
+                        labelLine={false}
+                      >
+                        {productMixData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ backgroundColor: "#fff", border: '1px solid #333' }}
+                        formatter={(value, name) => [formatCurrency(value), name]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Box>
+
+                {/* Table Box */}
+                <Box
+                  sx={{
+                    width: { xs: '100%', md: '50%' },
+                    height: { xs: 'auto', md: '100%' },
+                    minHeight: 0, // Important for proper containment
+                    flex: 1,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    p: 1
+                  }}
+                >
+                  <TableContainer sx={{ flex: 1, overflow: 'auto' }}>
+                    <Table size="small" sx={{ height: '100%' }}>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ color: '#64B5F6', borderColor: '#333' }}>Product</TableCell>
+                          <TableCell sx={{ color: '#64B5F6', borderColor: '#333' }} align="right">Amount</TableCell>
+                          <TableCell sx={{ color: '#64B5F6', borderColor: '#333' }} align="right">%</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {productMixData.map((row) => {
+                          const total = productMixData.reduce((sum, item) => sum + item.value, 0);
+                          const percentage = (row.value / total * 100).toFixed(1);
+                          return (
+                            <TableRow key={row.name}>
+                              <TableCell sx={{ color: '#fff', borderColor: '#333' }}>{row.name}</TableCell>
+                              <TableCell sx={{ color: '#fff', borderColor: '#333' }} align="right">
+                                {formatCurrency(row.amount)}
+                              </TableCell>
+                              <TableCell sx={{ color: '#fff', borderColor: '#333' }} align="right">
+                                {percentage}%
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
+
+
+
+        <Grid container item spacing={3} mt={0}>
+          {/* Left - 50% width - Four Cards (2x2 grid) */}
+          <Grid item xs={12} md={6} sx={{ height: '100%', pr: 2.5 }}> {/* Added right padding */}
+            <Grid container sx={{ 
+              height: '100%',
+              gap: 0, 
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+            }}>
+              {/* First row container */}
+              <Grid container item sx={{ gap: 5 , height: '45%' }}>
+                {[0, 1].map((i) => {
+                  const item = [
+                    { 
+                      label: "Total AUM", 
+                      value: formatCurrency(productMixData.find(item => item.name === "Mutual Funds")?.amount || 0),
+                      color: "#1976D2"
+                    },
+                    { 
+                      label: "Life Insurance", 
+                      value: formatCurrency(productMixData.find(item => item.name === "Life Insurance")?.amount || 0),
+                      color: "#FF9800"
+                    }
+                  ][i];
+                  return (
+                    <Grid item xs sx={{ flex: 1 }}>
+                      <Paper sx={{
+                        ...containerStyles2,
+                        borderRadius: "8px",
+                        p: 2,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                        height: '100%',
+                        borderLeft: `4px solid ${item.color}`
+                      }}>
+                        <Typography variant="subtitle2" sx={{ color: "#64B5F6", fontSize: 20 }}>
+                          {item.label}
+                        </Typography>
+                        <Typography variant="h5" sx={{ color: "#ffffff", fontSize: 25, fontWeight: 450 }}>
+                          {item.value}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+
+              {/* Second row container */}
+              <Grid container item sx={{ gap: 5 , height: '45%' }}>
+                {[0, 1].map((i) => {
+                  const item = [
+                    { 
+                      label: "General Insurance", 
+                      value: formatCurrency(productMixData.find(item => item.name === "General Insurance")?.amount || 0),
+                      color: "#4CAF50"
+                    },
+                    { 
+                      label: "Fixed Deposits", 
+                      value: formatCurrency(productMixData.find(item => item.name === "Fixed Deposits")?.amount || 0),
+                      color: "#9C27B0"
+                    }
+                  ][i];
+                  return (
+                    <Grid item xs sx={{ flex: 1 }}>
+                      <Paper sx={{
+                        ...containerStyles2,
+                        borderRadius: "8px",
+                        p: 2,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                        height: '100%',
+                        borderLeft: `4px solid ${item.color}`
+                      }}>
+                        <Typography variant="subtitle2" sx={{ color: "#64B5F6", fontSize: 20 }}>
+                          {item.label}
+                        </Typography>
+                        <Typography variant="h5" sx={{ color: "#ffffff", fontSize: 25, fontWeight: 450 }}>
+                          {item.value}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            </Grid>
+          </Grid>
+
+          {/* Right - 50% width - Product Mix with Responsive Layout */}
+          <Grid item xs={12} md={6} sx={{ pl: 2.5 }}> {/* Added left padding */}
+            {/* Add label */}
+            <Paper
+              sx={{
+                ...containerStyles,
+                height: { xs: 'auto', md: "100%" },
               }}
             >
               <Typography variant="h6" sx={{ color: '#fff', mb: 1 }}>

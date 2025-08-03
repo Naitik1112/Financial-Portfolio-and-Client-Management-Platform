@@ -1,7 +1,6 @@
-// utils/snapshotUtils.js
 const axios = require('axios');
 const BusinessSnapshot = require('../models/businessSnapshot');
-const dayjs = require('dayjs'); // Ensure dayjs is installed
+const dayjs = require('dayjs');
 
 exports.fetchAndStoreSnapshot = async () => {
   const [aumResponse, businessResponse] = await Promise.all([
@@ -19,39 +18,49 @@ exports.fetchAndStoreSnapshot = async () => {
     throw new Error('Invalid response structure from API');
   }
 
-  const { data: aumData } = aumResponse.data;
-  const { data: businessData } = businessResponse.data;
+  const aumData = aumResponse.data.data;
+  const businessData = businessResponse.data.data;
 
-  const todayDateStr = dayjs().format('YYYY-MM-DD');
+  // Format: YYYY-MM-01 for monthly snapshot
+  const firstDayOfMonthStr = dayjs().startOf('month').format('YYYY-MM-DD');
+  const firstDay = new Date(`${firstDayOfMonthStr}T00:00:00.000Z`);
+  const lastDay = new Date(dayjs().endOf('month').format('YYYY-MM-DD') + `T23:59:59.999Z`);
 
-  const snapshotData = {
-    AUM: aumData.AUM,
-    sipTotalBook: aumData.sipTotalBook,
-    lumpsumTotal: aumData.lumpsumTotal,
-    lifeInsuranceTotal: aumData.lifeInsuranceTotal,
-    generalInsuranceTotal: aumData.generalInsuranceTotal,
-    fdTotalAmount: aumData.fdTotalAmount,
-    timestamp: new Date(),
-    date: businessData.date,
-    todaySip: businessData.todaySip,
-    todayLumpsum: businessData.todayLumpsum,
-    todayRedemption: businessData.todayRedemption,
-    todayGeneralInsurance: businessData.todayGeneralInsurance,
-    todayLifeInsurance: businessData.todayLifeInsurance,
-    todayDebt: businessData.todayDebt
-  };
+  const adminIds = Object.keys(aumData);
 
-  const updatedSnapshot = await BusinessSnapshot.findOneAndUpdate(
-    {
-      date: {
-        $gte: new Date(`${todayDateStr}T00:00:00.000Z`),
-        $lte: new Date(`${todayDateStr}T23:59:59.999Z`)
-      }
-    },
-    snapshotData,
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
+  const snapshots = [];
 
-  return updatedSnapshot;
+  for (const adminId of adminIds) {
+    const snapshotData = {
+      adminId,
+      AUM: aumData[adminId].AUM,
+      sipTotalBook: aumData[adminId].sipTotalBook,
+      lumpsumTotal: aumData[adminId].lumpsumTotal,
+      lifeInsuranceTotal: aumData[adminId].lifeInsuranceTotal,
+      generalInsuranceTotal: aumData[adminId].generalInsuranceTotal,
+      fdTotalAmount: aumData[adminId].fdTotalAmount,
+      timestamp: new Date(),
+      date: firstDay, // Save first day of the month
+      todaySip: businessData[adminId].todaySip,
+      todayLumpsum: businessData[adminId].todayLumpsum,
+      todayRedemption: businessData[adminId].todayRedemption,
+      todayGeneralInsurance: businessData[adminId].todayGeneralInsurance,
+      todayLifeInsurance: businessData[adminId].todayLifeInsurance,
+      todayDebt: businessData[adminId].todayDebt
+    };
+
+    const updatedSnapshot = await BusinessSnapshot.findOneAndUpdate(
+      {
+        adminId,
+        date: { $gte: firstDay, $lte: lastDay }
+      },
+      snapshotData,
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    snapshots.push(updatedSnapshot);
+  }
+
+  return snapshots;
 };
 

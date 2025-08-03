@@ -4,10 +4,10 @@ const authController = require('./../controllers/authContriller');
 
 const router = express.Router();
 
+router.use(authController.protect)
+
 router
   .route('/')
-  .get(authController.protect)
-  .get(authController.restrictTo('admin'))
   .get(GeneralInsuranceController.getAllGeneralPolicy)
   .post(GeneralInsuranceController.createGeneralPolicy);
 

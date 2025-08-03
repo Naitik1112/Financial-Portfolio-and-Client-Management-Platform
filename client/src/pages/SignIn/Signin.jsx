@@ -32,7 +32,7 @@ const LoginPage = () => {
   };
 
   const loginDemoUser = () => {
-    const demoEmail = 'naitik.s1@ahduni.edu.in';
+    const demoEmail = 'ajay@gmail.com';
     const demoPassword = '123456789';
     // setUsername(demoEmail);
     // setPassword(demoPassword);
@@ -41,7 +41,7 @@ const LoginPage = () => {
 
   const loginUser = (email, password) => {
     axios
-      .post(`${backendURL}/api/v1/users/login`, { email, password }, { withCredentials: true })
+      .post(`${backendURL}/api/v1/admin/login`, { email, password }, { withCredentials: true })
       .then((response) => {
         const token = response.data.token;
         localStorage.setItem('jwt', token);

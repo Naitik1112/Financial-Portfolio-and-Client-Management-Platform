@@ -6,12 +6,13 @@ export const fetchLoggedInUser = async () => {
     const backendURL = import.meta.env.VITE_BACKEND_URL;
     const token = localStorage.getItem('jwt');
 
-    const response = await axios.get(`${backendURL}/api/v1/users/getme`, {
+    const response = await axios.get(`${backendURL}/api/v1/admin/getme`, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
       }
     });
+    console.log('user name : ', response);
     if (response.data && response.data.status === 'success') {
       return response.data.data;
     } else {

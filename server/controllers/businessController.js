@@ -1,5 +1,6 @@
 const axios = require('axios');
 const BusinessSnapshot = require('../models/businessSnapshot');
+const mongoose = require('mongoose');
 
 // Utility to generate random numbers
 const randomInRange = (min, max, decimals = 2) =>
@@ -71,16 +72,15 @@ exports.getFakeBusinessSnapshots = async (req, res) => {
     }
 
     await BusinessSnapshot.insertMany(fakeData);
-      return res
-        .status(201)
-        .json({ message: 'Fake data saved to DB', count: fakeData.length });
-
+    return res
+      .status(201)
+      .json({ message: 'Fake data saved to DB', count: fakeData.length });
 
     if (req.query.save === 'true') {
-    //   await BusinessSnapshot.insertMany(fakeData);
-    //   return res
-    //     .status(201)
-    //     .json({ message: 'Fake data saved to DB', count: fakeData.length });
+      //   await BusinessSnapshot.insertMany(fakeData);
+      //   return res
+      //     .status(201)
+      //     .json({ message: 'Fake data saved to DB', count: fakeData.length });
     }
 
     res.json(fakeData);
@@ -93,11 +93,15 @@ exports.getFakeBusinessSnapshots = async (req, res) => {
 exports.getGroupedBusinessSnapshots = async (req, res) => {
   try {
     const { type } = req.params;
+    console.log(req.admin);
+    const adminId = mongoose.Types.ObjectId(req.admin.id);
+
+    console.log(adminId);
 
     let groupByFormat;
     if (type === 'day') {
-      // Return full data sorted by date
-      const data = await BusinessSnapshot.find().sort({ date: 1 });
+      // Return full data sorted by date, filtered by adminId
+      const data = await BusinessSnapshot.find({ adminId }).sort({ date: 1 });
       return res.json(data);
     } else if (type === 'week') {
       groupByFormat = '%Y-%U'; // Year + Week number
@@ -106,13 +110,18 @@ exports.getGroupedBusinessSnapshots = async (req, res) => {
     } else if (type === 'year') {
       groupByFormat = '%Y'; // Year
     } else {
-      return res.status(400).json({ error: 'Invalid type. Use day, week, month, or year.' });
+      return res
+        .status(400)
+        .json({ error: 'Invalid type. Use day, week, month, or year.' });
     }
 
     const result = await BusinessSnapshot.aggregate([
       {
+        $match: { adminId: new mongoose.Types.ObjectId(adminId) } // filter by adminId
+      },
+      {
         $addFields: {
-          groupKey: { $dateToString: { format: groupByFormat, date: "$date" } }
+          groupKey: { $dateToString: { format: groupByFormat, date: '$date' } }
         }
       },
       {
@@ -120,37 +129,39 @@ exports.getGroupedBusinessSnapshots = async (req, res) => {
       },
       {
         $group: {
-          _id: "$groupKey",
-          lastEntry: { $last: "$$ROOT" },
-          totalTodaySip: { $sum: "$todaySip" },
-          totalTodayLumpsum: { $sum: "$todayLumpsum" },
-          totalTodayRedemption: { $sum: "$todayRedemption" },
-          totalTodayGeneralInsurance: { $sum: "$todayGeneralInsurance" },
-          totalTodayLifeInsurance: { $sum: "$todayLifeInsurance" },
-          totalTodayDebt: { $sum: "$todayDebt" }
+          _id: '$groupKey',
+          lastEntry: { $last: '$$ROOT' },
+          totalTodaySip: { $sum: '$todaySip' },
+          totalTodayLumpsum: { $sum: '$todayLumpsum' },
+          totalTodayRedemption: { $sum: '$todayRedemption' },
+          totalTodayGeneralInsurance: { $sum: '$todayGeneralInsurance' },
+          totalTodayLifeInsurance: { $sum: '$todayLifeInsurance' },
+          totalTodayDebt: { $sum: '$todayDebt' }
         }
       },
       {
         $project: {
-          group: "$_id",
-          date: "$lastEntry.date",
-          AUM: "$lastEntry.AUM",
-          sipTotalBook: "$lastEntry.sipTotalBook",
-          lumpsumTotal: "$lastEntry.lumpsumTotal",
-          lifeInsuranceTotal: "$lastEntry.lifeInsuranceTotal",
-          generalInsuranceTotal: "$lastEntry.generalInsuranceTotal",
-          fdTotalAmount: "$lastEntry.fdTotalAmount",
-          todaySip: "$totalTodaySip",
-          todayLumpsum: "$totalTodayLumpsum",
-          todayRedemption: "$totalTodayRedemption",
-          todayGeneralInsurance: "$totalTodayGeneralInsurance",
-          todayLifeInsurance: "$totalTodayLifeInsurance",
-          todayDebt: "$totalTodayDebt",
+          group: '$_id',
+          date: '$lastEntry.date',
+          AUM: '$lastEntry.AUM',
+          sipTotalBook: '$lastEntry.sipTotalBook',
+          lumpsumTotal: '$lastEntry.lumpsumTotal',
+          lifeInsuranceTotal: '$lastEntry.lifeInsuranceTotal',
+          generalInsuranceTotal: '$lastEntry.generalInsuranceTotal',
+          fdTotalAmount: '$lastEntry.fdTotalAmount',
+          todaySip: '$totalTodaySip',
+          todayLumpsum: '$totalTodayLumpsum',
+          todayRedemption: '$totalTodayRedemption',
+          todayGeneralInsurance: '$totalTodayGeneralInsurance',
+          todayLifeInsurance: '$totalTodayLifeInsurance',
+          todayDebt: '$totalTodayDebt',
           _id: 0
         }
       },
       { $sort: { date: 1 } }
     ]);
+
+    console.log(result);
 
     res.json(result);
   } catch (err) {

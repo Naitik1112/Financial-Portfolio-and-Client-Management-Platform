@@ -9,7 +9,10 @@ router.route('/getAUM').get(DashboardController.getAUMBreakdown);
 router.route('/getTodayBusiness').get(DashboardController.getTodayBusiness);
 
 router.use(authController.protect);
-router.use(authController.restrictTo('admin'));
+
+router.route('/getAUMByAdmin').get(DashboardController.getAUMBreakdownByAdmin);
+
+router.route('/getTodayBusinessByAdmin').get(DashboardController.getTodayBusinessByAdmin);
 
 router.route('/getFDMaturing').get(DashboardController.getFDsMaturingThisMonth);
 

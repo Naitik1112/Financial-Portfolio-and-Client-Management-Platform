@@ -1,14 +1,13 @@
 const express = require('express');
 const mutualFundsController = require('./../controllers/mutualFundsController');
 const authController = require('./../controllers/authContriller');
-const { getMutualFunds } = require('./../controllers/mutualFundsController');
 
 const router = express.Router();
 
+router.use(authController.protect);
+
 router
   .route('/')
-  .get(authController.protect)
-  .get(authController.restrictTo('admin'))
   .get(mutualFundsController.getAllLifePolicy)
   .post(
     mutualFundsController.convertNameToId,

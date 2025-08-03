@@ -47,12 +47,14 @@ exports.convertNameToId = catchAsync(async (req, res, next) => {
 exports.getLifeInsByUser = catchAsync(async (req, res, next) => {
   const userId = req.params.id;
 
-  const LifeIns = await Life.find({ clientId: userId });
+  const adminId = req.admin.id;
+
+  const LifeIns = await Life.find({ clientId: userId, adminId: adminId });
 
   if (!LifeIns.length) {
     return res.status(404).json({
       status: 'fail',
-      message: 'No mutual funds found for the specified user.'
+      message: 'No life Insurances found for the specified user.'
     });
   }
 

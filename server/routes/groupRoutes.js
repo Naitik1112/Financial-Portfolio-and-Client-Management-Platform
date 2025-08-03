@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const groupController = require('../controllers/groupController');
+const authController = require('../controllers/authContriller');
+
+router.use(authController.protect);
 
 router.post('/', groupController.createGroup);
 

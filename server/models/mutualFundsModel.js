@@ -1,26 +1,30 @@
 const mongoose = require('mongoose');
+const BusinessSnapshot = require('./businessSnapshot');
 const axios = require('axios');
 
-const redemptionSchema = new mongoose.Schema(
-  {
-    date: {
-      type: Date,
-      default: Date.now
-    },
-    units: Number,
-    nav: Number,
-    taxtype: {
-      type: String,
-      enum: ['LTCG', 'STCG']
-    },
-    tax: {
-      type: Number
-    }
+const redemptionSchema = new mongoose.Schema({
+  date: {
+    type: Date,
+    default: Date.now
+  },
+  units: Number,
+  nav: Number,
+  taxtype: {
+    type: String,
+    enum: ['LTCG', 'STCG']
+  },
+  tax: {
+    type: Number
   }
-);
+});
 
 const mfSchema = new mongoose.Schema(
   {
+    adminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admin',
+      required: false
+    },
     schemeName: {
       type: String,
       required: [true, 'A mutual fund must have a name'],
@@ -94,7 +98,7 @@ const mfSchema = new mongoose.Schema(
     sipDay: {
       type: Number,
       min: 1,
-      max: 31,
+      max: 30,
       required: function() {
         return this.investmentType === 'sip';
       }
@@ -324,6 +328,220 @@ async function calculateCurrentValue(next) {
   }
 }
 
+async function calculateMonthlyContributions(mf) {
+  try {
+    const today = new Date();
+    const results = {}; // Will store monthly contributions {YYYY-MM: {sip, lumpsum, redemption}}
+
+    // Process SIP investments
+    if (mf.investmentType === 'sip' && mf.sipTransactions) {
+      for (const txn of mf.sipTransactions) {
+        const startDate = new Date(txn.date);
+        let currentDate = new Date(startDate);
+
+        while (currentDate <= today) {
+          const monthKey = currentDate.toISOString().slice(0, 7); // YYYY-MM format
+
+          try {
+            const nav = await fetchNAV(mf.AMFI, currentDate);
+            const monthValue = txn.units * nav;
+
+            // Initialize month if not exists
+            results[monthKey] = results[monthKey] || {
+              sip: 0,
+              lumpsum: 0,
+              redemption: 0
+            };
+
+            results[monthKey].sip += monthValue;
+
+            // Move to next month
+            currentDate.setMonth(currentDate.getMonth() + 1);
+          } catch (err) {
+            console.warn(
+              `Failed to fetch NAV for ${currentDate}: ${err.message}`
+            );
+            currentDate.setMonth(currentDate.getMonth() + 1);
+          }
+        }
+
+        // Process redemptions for this SIP
+        if (txn.redemptions?.length) {
+          for (const redemption of txn.redemptions) {
+            const redemptionDate = new Date(redemption.date);
+            const monthKey = redemptionDate.toISOString().slice(0, 7);
+
+            try {
+              const nav = await fetchNAV(mf.AMFI, redemptionDate);
+              const redemptionValue = redemption.units * nav;
+
+              results[monthKey] = results[monthKey] || {
+                sip: 0,
+                lumpsum: 0,
+                redemption: 0
+              };
+              results[monthKey].redemption += redemptionValue;
+            } catch (err) {
+              console.warn(
+                `Failed to process redemption for ${redemptionDate}: ${err.message}`
+              );
+            }
+          }
+        }
+      }
+    }
+
+    // Process lump sum investments (similar logic)
+    if (mf.investmentType === 'lumpsum' && mf.lumpsumUnits) {
+      const startDate = new Date(mf.lumpsumDate);
+      let currentDate = new Date(startDate);
+
+      while (currentDate <= today) {
+        const monthKey = currentDate.toISOString().slice(0, 7);
+
+        try {
+          const nav = await fetchNAV(mf.AMFI, currentDate);
+          const monthValue = mf.lumpsumUnits * nav;
+
+          results[monthKey] = results[monthKey] || {
+            sip: 0,
+            lumpsum: 0,
+            redemption: 0
+          };
+          results[monthKey].lumpsum += monthValue;
+
+          currentDate.setMonth(currentDate.getMonth() + 1);
+        } catch (err) {
+          console.warn(
+            `Failed to fetch NAV for ${currentDate}: ${err.message}`
+          );
+          currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+      }
+
+      // Process redemptions for lump sum
+      if (mf.redemptions?.length) {
+        for (const redemption of mf.redemptions) {
+          const redemptionDate = new Date(redemption.date);
+          const monthKey = redemptionDate.toISOString().slice(0, 7);
+
+          try {
+            const nav = await fetchNAV(mf.AMFI, redemptionDate);
+            const redemptionValue = redemption.units * nav;
+
+            results[monthKey] = results[monthKey] || {
+              sip: 0,
+              lumpsum: 0,
+              redemption: 0
+            };
+            results[monthKey].redemption += redemptionValue;
+          } catch (err) {
+            console.warn(
+              `Failed to process redemption for ${redemptionDate}: ${err.message}`
+            );
+          }
+        }
+      }
+    }
+
+    return results;
+  } catch (err) {
+    console.error('Error in calculateMonthlyContributions:', err);
+    throw err;
+  }
+}
+
+// Modified triggerSnapshot function to update BusinessSnapshot
+async function triggerSnapshot(adminId) {
+  try {
+    const allMFs = await MutualFund.find({ adminId });
+    console.log("allMFs : ", allMFs);
+    const monthlyAggregates = {}; // {YYYY-MM: {sip, lumpsum, redemption}}
+
+    // Aggregate all contributions across all funds
+    for (const mf of allMFs) {
+      try {
+        const contributions = await calculateMonthlyContributions(mf);
+
+        // Merge contributions into monthly aggregates
+        for (const [monthKey, values] of Object.entries(contributions)) {
+          monthlyAggregates[monthKey] = monthlyAggregates[monthKey] || {
+            sip: 0,
+            lumpsum: 0,
+            redemption: 0
+          };
+
+          monthlyAggregates[monthKey].sip += values.sip;
+          monthlyAggregates[monthKey].lumpsum += values.lumpsum;
+          monthlyAggregates[monthKey].redemption += values.redemption;
+        }
+      } catch (err) {
+        console.error(`Error processing MF ${mf._id}: ${err.message}`);
+      }
+    }
+
+    // console.log(monthlyAggregates)
+    
+    // Update all affected months in BusinessSnapshot
+    for (const [monthKey, values] of Object.entries(monthlyAggregates)) {
+      const monthStart = new Date(`${monthKey}-01T00:00:00.000Z`);
+
+      try {
+        const existingSnapshot = await BusinessSnapshot.findOne({
+          date: {
+            $gte: monthStart,
+            $lt: new Date(
+              monthStart.getFullYear(),
+              monthStart.getMonth() + 1,
+              1
+            )
+          },
+          adminId
+        });
+
+        const aum = values.sip + values.lumpsum - values.redemption;
+
+        if (existingSnapshot) {
+          // Update existing snapshot
+          existingSnapshot.sipTotalBook = values.sip;
+          existingSnapshot.lumpsumTotal = values.lumpsum;
+          existingSnapshot.todayRedemption = values.redemption;
+          existingSnapshot.AUM = aum;
+          await existingSnapshot.save();
+        } else {
+          // Create new snapshot
+          await BusinessSnapshot.create({
+            adminId,
+            date: monthStart,
+            sipTotalBook: values.sip,
+            lumpsumTotal: values.lumpsum,
+            todaySip: 0, // These would need adjustment if you want daily breakdowns
+            todayLumpsum: 0,
+            todayRedemption: values.redemption,
+            AUM: aum,
+            lifeInsuranceTotal: 0,
+            generalInsuranceTotal: 0,
+            fdTotalAmount: 0,
+            todayGeneralInsurance: 0,
+            todayLifeInsurance: 0,
+            todayDebt: 0
+          });
+        }
+      } catch (err) {
+        console.error(
+          `Failed to update snapshot for ${monthKey}:`,
+          err.message
+        );
+      }
+    }
+
+    console.log('Business snapshots updated successfully for admin:', adminId);
+  } catch (err) {
+    console.error('Failed to update business snapshots:', err.message);
+    throw err;
+  }
+}
+
 mfSchema.pre('save', function(next) {
   let dates = [];
 
@@ -346,7 +564,6 @@ mfSchema.pre('save', function(next) {
   next();
 });
 
-// Enhanced update middleware
 // Enhanced update middleware
 async function handleUpdates(next) {
   try {
@@ -533,15 +750,6 @@ async function handleUpdates(next) {
   }
 }
 
-const triggerSnapshot = async () => {
-  try {
-    await axios.get(`${process.env.BACKEND_URL}/api/v1/snapshot/trigger`);
-    console.log('Snapshot triggered successfully');
-  } catch (err) {
-    console.error('Failed to trigger snapshot:', err.message);
-  }
-};
-
 // async function handleUpdates(next) {
 //   try {
 //     if (this.isNew || this._skipHooks) return next();
@@ -598,28 +806,114 @@ mfSchema.pre('save', calculateCurrentValue);
 mfSchema.pre('updateOne', handleUpdates);
 mfSchema.pre('findOneAndUpdate', handleUpdates);
 
-// Trigger after save (create or update)
-mfSchema.post('save', function() {
-  triggerSnapshot();
+// Modified post hooks to trigger snapshot updates
+mfSchema.post('save', async function(doc) {
+  try {
+    // Force recalculate when a new MF is created or existing one is modified
+    setTimeout(async () => {
+      try {
+        console.log('Snapshot Updation started SAVE');
+        console.log("doc : ",doc)
+        await triggerSnapshot(doc.adminId);
+        console.log('Snapshot updated in background');
+      } catch (err) {
+        console.error('Background snapshot error:', err);
+      }
+    }, 0);
+  } catch (err) {
+    console.error('Error in post-save hook:', err);
+  }
 });
 
-// Trigger after remove (manual removal via .remove())
-mfSchema.post('remove', function() {
-  triggerSnapshot();
+mfSchema.post('remove', async function(doc) {
+  try {
+    // Force recalculate when a MF is deleted
+    setTimeout(async () => {
+      try {
+        console.log('Snapshot Updation started REMOVE');
+        await triggerSnapshot(doc.adminId);
+        console.log('Snapshot updated in background');
+      } catch (err) {
+        console.error('Background snapshot error:', err);
+      }
+    }, 0);
+  } catch (err) {
+    console.error('Error in post-remove hook:', err);
+  }
 });
 
-// Trigger after findOneAndUpdate or findOneAndDelete
-mfSchema.post('findOneAndUpdate', function() {
-  triggerSnapshot();
+mfSchema.post('findOneAndUpdate', async function(doc) {
+  try {
+    // Force recalculate after updates
+    if (doc) {
+      // Only if document was found and updated
+      setTimeout(async () => {
+        try {
+          console.log('Snapshot Updation started FINDONEANDUPDATE');
+          await triggerSnapshot(doc.adminId);
+          console.log('Snapshot updated in background');
+        } catch (err) {
+          console.error('Background snapshot error:', err);
+        }
+      }, 0);
+    }
+  } catch (err) {
+    console.error('Error in post-findOneAndUpdate hook:', err);
+  }
 });
 
-mfSchema.post('findOneAndDelete', function() {
-  triggerSnapshot();
+mfSchema.post('findOneAndDelete', async function(doc) {
+  try {
+    // Force recalculate after deletion
+    if (doc) {
+      // Only if document was found and deleted
+      setTimeout(async () => {
+        try {
+          console.log('Snapshot Updation started FINDONEANDDELETE');
+          console.log(doc.adminId);
+          await triggerSnapshot(doc.adminId);
+          console.log('Snapshot updated in background');
+        } catch (err) {
+          console.error('Background snapshot error:', err);
+        }
+      }, 0);
+    }
+  } catch (err) {
+    console.error('Error in post-findOneAndDelete hook:', err);
+  }
 });
 
-mfSchema.post('findOneAndRemove', function() {
-  triggerSnapshot();
+mfSchema.post('findOneAndRemove', async function(doc) {
+  try {
+    // Force recalculate after removal
+    if (doc) {
+      // Only if document was found and removed
+      setTimeout(async () => {
+        try {
+          console.log('Snapshot Updation started FINDONEANDREMOVE');
+          await triggerSnapshot(doc.adminId);
+          console.log('Snapshot updated in background');
+        } catch (err) {
+          console.error('Background snapshot error:', err);
+        }
+      }, 0);
+    }
+  } catch (err) {
+    console.error('Error in post-findOneAndRemove hook:', err);
+  }
 });
 
 const MutualFund = mongoose.model('MutualFund', mfSchema);
+
+// Add this to your mutualFund model file
+MutualFund.triggerSnapshotUpdate = async function() {
+  try {
+    await triggerSnapshot(req.body.adminId);
+    return { success: true, message: 'Snapshot updated successfully' };
+  } catch (err) {
+    console.error('Error triggering snapshot update:', err);
+    return { success: false, message: err.message };
+  }
+};
+
 module.exports = MutualFund;

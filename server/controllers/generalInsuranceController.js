@@ -43,7 +43,9 @@ exports.convertNameToId = catchAsync(async (req, res, next) => {
 exports.getGeneralInsByUser = catchAsync(async (req, res, next) => {
   const userId = req.params.id;
 
-  const GeneralIns = await General.find({ clientId: userId });
+  const adminId = req.admin.id;
+
+  const GeneralIns = await General.find({ clientId: userId, adminId: adminId });
 
   if (!GeneralIns.length) {
     return res.status(404).json({

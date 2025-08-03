@@ -1,13 +1,15 @@
-// models/groupModel.js
-
 const mongoose = require('mongoose');
 
 const groupSchema = new mongoose.Schema(
   {
+    adminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admin',
+      required: false
+    },
     name: {
       type: String,
       required: true,
-      unique: true
     },
     users: [
       {
@@ -18,6 +20,9 @@ const groupSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Compound index for uniqueness of (adminId, name)
+groupSchema.index({ adminId: 1, name: 1 }, { unique: true });
 
 const Group = mongoose.model('Group', groupSchema);
 

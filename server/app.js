@@ -11,6 +11,7 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 
 const AppError = require('./utils/appError');
+const adminRouter = require('./routes/adminRoutes');
 const userRouter = require('./routes/userRoutes');
 const lifeInsuranceRouter = require('./routes/lifeInsuranceRoutes');
 const generalInsuranceRouter = require('./routes/generalInsuranceRoutes');
@@ -104,6 +105,7 @@ app.use((req, res, next) => {
 
 // 3) ROUTES
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/lifeInsurance', lifeInsuranceRouter);
 app.use('/api/v1/generalInsurance', generalInsuranceRouter);
 app.use('/api/v1/mutualFunds', mutualFundsRouter);
