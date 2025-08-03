@@ -31,6 +31,7 @@ const companyNames =
   ,{label:'PNB'}
   ,{label:'Reliance Nippon'}
   ,{label:'Aviva'}
+  ,{label:'Secure'}
   ,{label:'Sahara'}
   ,{label:'Bharti'}
   ,{label:'Future Generali'}

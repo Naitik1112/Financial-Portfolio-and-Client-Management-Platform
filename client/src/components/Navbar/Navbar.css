@@ -30,8 +30,8 @@ label #Logo_img {
   position: fixed;
   left: 0%;
   object-fit: cover;
-  width: 240px;
-  height: 70px;
+  width: 320px;
+  height: 75px;
   padding-bottom: 1%;
   scale: 0.70;
 }

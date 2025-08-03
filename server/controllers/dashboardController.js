@@ -458,7 +458,10 @@ exports.getFDsMaturingThisMonth = CatchAsync(async (req, res, next) => {
 });
 
 exports.getRecentInvestments = CatchAsync(async (req, res, next) => {
+  const adminId = req.admin.id
+
   const investmentsRaw = await Mutual.find({
+    adminId,
     investmentType: { $in: ['sip', 'lumpsum'] }
   })
     .populate('holderId', 'name')

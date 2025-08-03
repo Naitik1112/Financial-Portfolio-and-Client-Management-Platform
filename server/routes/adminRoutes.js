@@ -23,6 +23,8 @@ router.route('/getUsersOfAdmin').get(adminController.getUserOfAdmin);
 
 router.route('/getme').get(adminController.getme, adminController.getAdmin);
 
+router.route('/editme').patch(adminController.getme, adminController.updateAdmin);
+
 router.route('/numberOfClients').get(adminController.getNumberOfClient);
 
 router.route('/getRecentlyAdded').get(adminController.getRecentClients);

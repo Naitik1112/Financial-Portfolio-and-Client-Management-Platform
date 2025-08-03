@@ -6,7 +6,7 @@ import Home from './pages/Home/Home';
 import Navbar from './components/Navbar/Navbar';
 import MyClient from './pages/MyClient/MyClient';
 import SignIn from './pages/SignIn/Signin';
-// import SignUp from './pages/SignUp/SignUp';
+import SignUp from './pages/SignUp/SignUp';
 import Profile from './pages/Profile/Profile';
 import AddClient from './pages/addClient';
 import AddInsurance from './pages/addInsurance';
@@ -55,6 +55,7 @@ function App() {
         <Sidebar />
         <Routes>
           {/* Public Routes */}
+          <Route path="/signup" element={<SignUp />} />
           <Route path="/signin" element={<SignIn />} />
           {/* <Route path="/signup" element={<SignUp />} /> */}
           <Route path="/please-login" element={<PleaseLogin />} />

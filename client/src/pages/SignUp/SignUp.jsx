@@ -1,75 +1,258 @@
-import  { useState } from "react";
-import "./../SignIn/Signin.css"; // Ensure you have the appropriate CSS file
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import "./../SignIn/Signin.css";
+import * as React from "react";
+import Box from "@mui/material/Box";
+import Alert from "@mui/material/Alert";
+import IconButton from "@mui/material/IconButton";
+import Collapse from "@mui/material/Collapse";
+import Button from "@mui/material/Button";
+import CloseIcon from "@mui/icons-material/Close";
+import { Stack } from "@mui/material";
+import TextField from "@mui/material/TextField";
+import axios from "axios";
 
-const LoginPage = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [email, setMail] = useState("");
-  const [passwordConfirm, setPasswordConfirm] = useState("");
+import { getStyles } from "../../styles/themeStyles";
+import { useThemeMode } from "../../context/ThemeContext";
+
+const SignUpPage = () => {
+  const [formData, setFormData] = useState({
+    companyName: "",
+    adminName: "",
+    email: "",
+    password: "",
+    passwordConfirm: ""
+  });
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertOpen, setAlertOpen] = useState(false);
+  const { darkMode } = useThemeMode();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { body, fontColor, paperBg, inputStyles, buttonStyles, containerStyles, containerStyles1, containerStyles2 } = getStyles(darkMode);
+
+  const navigate = useNavigate();
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Add your login logic here
-    console.log("Username:", username);
-    console.log("Password:", password);
+    if (formData.password !== formData.passwordConfirm) {
+      setAlertMessage("Passwords do not match!");
+      setAlertOpen(true);
+      return;
+    }
+    signupUser(formData);
+  };
+
+  const loginDemoUser = () => {
+    const demoData = {
+      email: "ajay@gmail.com",
+      password: "123456789",
+    };
+    loginUser(demoData);
+  };
+
+  const loginUser = (userData) => {
+    setIsLoading(true);
+    setAlertMessage("Your data is getting submitted...");
+    setAlertOpen(true);
+
+    axios
+      .post(`${backendURL}/api/v1/admin/login`, userData, { withCredentials: true })
+      .then((response) => {
+        const token = response.data.token;
+        localStorage.setItem('jwt', token);
+        setIsLoading(false);
+        setAlertMessage("Demo User Login successful!");
+        setTimeout(() => {
+          setAlertOpen(false);
+          navigate("/");
+        }, 2000);
+      })
+      .catch((error) => {
+        console.error(error);
+        setIsLoading(false);
+        if (error.response && error.response.status === 409) {
+          setAlertMessage("Account already exists. Redirecting to login...");
+          setTimeout(() => {
+            setAlertOpen(false);
+            navigate("/signin");
+          }, 3000);
+        } else {
+          setAlertMessage("SignUp failed. Please try again.");
+          setTimeout(() => {
+            setAlertOpen(false);
+          }, 3000);
+        }
+      });
+  };
+
+
+  const signupUser = (userData) => {
+    setIsLoading(true);
+    setAlertMessage("Your data is getting submitted...");
+    setAlertOpen(true);
+
+    axios
+      .post(`${backendURL}/api/v1/admin/signup`, userData, { withCredentials: true })
+      .then((response) => {
+        const token = response.data.token;
+        localStorage.setItem('jwt', token);
+        setIsLoading(false);
+        setAlertMessage("SignUp successful!");
+        setTimeout(() => {
+          setAlertOpen(false);
+          navigate("/");
+        }, 2000);
+      })
+      .catch((error) => {
+        console.error(error);
+        setIsLoading(false);
+        if (error.response && error.response.status === 409) {
+          setAlertMessage("Account already exists. Redirecting to login...");
+          setTimeout(() => {
+            setAlertOpen(false);
+            navigate("/signin");
+          }, 3000);
+        } else {
+          setAlertMessage("SignUp failed. Please try again.");
+          setTimeout(() => {
+            setAlertOpen(false);
+          }, 3000);
+        }
+      });
+  };
+
+
+  const handleLoginRedirect = () => {
+    navigate("/signin");
   };
 
   return (
-    <div className="container">
+    <div className="container" style={containerStyles1}>
+      {/* Alert Box */}
+      <Box sx={{ width: "100%" }}>
+        <Collapse in={alertOpen}>
+          <Alert
+            severity={isLoading ? "info" : alertMessage === "SignUp successful!" || alertMessage.includes("Login successful") ? "success" : "error"}
+            action={
+              !isLoading && (
+                <IconButton
+                  aria-label="close"
+                  color="inherit"
+                  size="small"
+                  onClick={() => setAlertOpen(false)}
+                >
+                  <CloseIcon fontSize="inherit" />
+                </IconButton>
+              )
+            }
+            sx={{ mb: 2 }}
+          >
+            {alertMessage}
+          </Alert>
+        </Collapse>
+
+      </Box>
+
+      {/* SignUp Form */}
       <form onSubmit={handleSubmit}>
-        <h1>Login</h1>
-
-        <div className="input-box">
-          <input
-            type="text"
-            placeholder="Username"
+        <h1>Admin SignUp</h1>
+        
+        <Box sx={{ marginBottom: '20px', marginTop: '40px' }}>
+          <TextField
+            label="Company Name"
+            name="companyName"
+            variant="outlined"
+            fullWidth
             required
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={formData.companyName}
+            onChange={handleChange}
+            sx={inputStyles}
           />
-          {/* <i className="bx bxs-user"></i> */}
-        </div>
+        </Box>
 
-        <div className="input-box">
-          <input
-            type="text"
-            placeholder="Email"
+        <Box sx={{ marginBottom: '20px' }}>
+          <TextField
+            label="Admin Name"
+            name="adminName"
+            variant="outlined"
+            fullWidth
             required
-            value={email}
-            onChange={(e) => setMail(e.target.value)}
+            value={formData.adminName}
+            onChange={handleChange}
+            sx={inputStyles}
           />
-          {/* <i className="bx bxs-user"></i> */}
-        </div>
+        </Box>
 
-        <div className="input-box">
-          <input
+        <Box sx={{ marginBottom: '20px' }}>
+          <TextField
+            label="Email"
+            name="email"
+            variant="outlined"
+            fullWidth
+            required
+            value={formData.email}
+            onChange={handleChange}
+            sx={inputStyles}
+          />
+        </Box>
+
+        <Box sx={{ marginBottom: '20px' }}>
+          <TextField
+            label="Password"
+            name="password"
+            variant="outlined"
             type="password"
-            placeholder="Password"
+            fullWidth
             required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={formData.password}
+            onChange={handleChange}
+            sx={inputStyles}
           />
-          {/* <i className="bx bxs-lock-alt"></i> */}
-        </div>
+        </Box>
 
-        <div className="input-box">
-          <input
+        <Box sx={{ marginBottom: '40px' }}>
+          <TextField
+            label="Confirm Password"
+            name="passwordConfirm"
+            variant="outlined"
             type="password"
-            placeholder="Password Confirm"
+            fullWidth
             required
-            value={passwordConfirm}
-            onChange={(e) => setPasswordConfirm(e.target.value)}
+            value={formData.passwordConfirm}
+            onChange={handleChange}
+            sx={inputStyles}
           />
-          {/* <i className="bx bxs-lock-alt"></i> */}
-        </div>
+        </Box>
 
-        <button type="submit" className="btn">
-          Sign Up
-        </button>
+        <Button type="submit" variant="contained" fullWidth sx={buttonStyles}>
+          SignUp
+        </Button>
+
+        {/* Demo User SignUp Button */}
+        <Button 
+          onClick={loginDemoUser}
+          variant="outlined" 
+          fullWidth 
+          sx={{...buttonStyles, marginTop: '10px'}}
+        >
+          Login as Demo User
+        </Button>
 
         <div className="register-link">
           <p>
-            Do you have an account? <a href="/signin">login here!</a>
+            Already have an account? 
+            <a href="#" onClick={handleLoginRedirect} style={{ marginLeft: '5px', cursor: 'pointer' }}>
+              Login here!
+            </a>
           </p>
         </div>
       </form>
@@ -77,4 +260,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default SignUpPage;

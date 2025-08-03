@@ -8,20 +8,19 @@ const adminSchema = new mongoose.Schema(
     companyName: {
       type: String,
       required: [true, 'A company must have a name'],
-      trim: true,
-      unique: true
+      trim: true
     },
     adminName: {
       type: String,
       required: [true, 'A admin must have a name'],
-      trim: true,
-      unique: true
+      trim: true
     },
     email: {
       type: String,
       required: [true, 'A admin should have an email'],
       lowercase: true,
-      validate: [validator.isEmail, 'Please provide a valid email']
+      validate: [validator.isEmail, 'Please provide a valid email'],
+      unique: true
     },
     photo: {
       type: String,

@@ -251,9 +251,27 @@ const AddGeneral = () => {
         <TextField id="outlined-basic-4" label="Policy Name" variant="outlined" onChange={(e) => setPolicyName(e.target.value)}
           sx={inputStyles}
         />
-        <TextField id="outlined-basic-5" label="Company Name" onChange={(e) => setCompanyName(e.target.value)} variant="outlined"
+        {/* <TextField id="outlined-basic-5" label="Company Name" onChange={(e) => setCompanyName(e.target.value)} variant="outlined"
           sx={inputStyles}
+        /> */}
+
+        <Autocomplete 
+          sx={inputStyles}
+          disablePortal
+          options={companyNames}
+          value={companyNames.find(option => option.label === companyName) || null}
+          onChange={(event, newValue) => setCompanyName(newValue?.label || '')}
+          renderInput={(params) => <TextField {...params} label="Company Name" />}
+          componentsProps={{
+            paper: {
+              sx: {
+                bgcolor: "grey", // Background color of the dropdown menu
+                color: "black",  // Text color (optional)
+              },
+            },
+          }}
         />
+
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker sx={inputStyles} label="Starting Date" onChange={(date) => setStartPremiumDate(date ? date.toISOString() : '')} />
         </LocalizationProvider>

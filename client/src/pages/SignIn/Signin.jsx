@@ -21,6 +21,7 @@ const LoginPage = () => {
   const [alertMessage, setAlertMessage] = useState("");
   const [alertOpen, setAlertOpen] = useState(false);
   const { darkMode } = useThemeMode();
+  const [isLoading, setIsLoading] = useState(false);
   const { body, fontColor, paperBg, inputStyles, buttonStyles, containerStyles, containerStyles1, containerStyles2 } = getStyles(darkMode);
 
   const navigate = useNavigate();
@@ -40,13 +41,17 @@ const LoginPage = () => {
   };
 
   const loginUser = (email, password) => {
+    setIsLoading(true);
+    setAlertMessage("Your data is getting submitted...");
+    setAlertOpen(true);
+
     axios
       .post(`${backendURL}/api/v1/admin/login`, { email, password }, { withCredentials: true })
       .then((response) => {
         const token = response.data.token;
         localStorage.setItem('jwt', token);
         setAlertMessage("Login successful!");
-        setAlertOpen(true);
+        setIsLoading(false);
         setTimeout(() => {
           setAlertOpen(false);
           navigate("/");
@@ -55,12 +60,13 @@ const LoginPage = () => {
       .catch((error) => {
         console.error(error);
         setAlertMessage("Invalid email or password. Please try again.");
-        setAlertOpen(true);
+        setIsLoading(false);
         setTimeout(() => {
           setAlertOpen(false);
         }, 3000);
       });
   };
+
 
   return (
     <div className="container" style={containerStyles1}>
@@ -68,22 +74,25 @@ const LoginPage = () => {
       <Box sx={{ width: "100%" }}>
         <Collapse in={alertOpen}>
           <Alert
-            severity={alertMessage === "Login successful!" ? "success" : "error"}
+            severity={isLoading ? "info" : alertMessage === "Login successful!" ? "success" : "error"}
             action={
-              <IconButton
-                aria-label="close"
-                color="inherit"
-                size="small"
-                onClick={() => setAlertOpen(false)}
-              >
-                <CloseIcon fontSize="inherit" />
-              </IconButton>
+              !isLoading && (
+                <IconButton
+                  aria-label="close"
+                  color="inherit"
+                  size="small"
+                  onClick={() => setAlertOpen(false)}
+                >
+                  <CloseIcon fontSize="inherit" />
+                </IconButton>
+              )
             }
             sx={{ mb: 2 }}
           >
             {alertMessage}
           </Alert>
         </Collapse>
+
       </Box>
 
       {/* Login Form */}
@@ -134,7 +143,7 @@ const LoginPage = () => {
 
         <div className="register-link">
           <p>
-            Do not have an account? <a href="#">Register here!</a>
+            Do not have an account? <a href="/signup">Register here!</a>
           </p>
         </div>
       </form>

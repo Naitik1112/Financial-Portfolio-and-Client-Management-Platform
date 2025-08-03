@@ -367,10 +367,6 @@ const Home = () => {
       
       {/* === MAIN CONTENT LAYOUT === */}
       <Grid container spacing={3} mb={6}>
-        
-
-
-
         <Grid container item spacing={3} mt={0}>
           {/* Left - 50% width - Four Cards (2x2 grid) */}
           <Grid item xs={12} md={6} sx={{ height: '100%', pr: 2.5 }}> {/* Added right padding */}
@@ -569,7 +565,7 @@ const Home = () => {
       {/* === TABLES === */}
       <Grid container spacing={6}>
         {[{
-          title: "Today's Maturing FDs", 
+          title: "FDs Maturing this Month", 
           columns: ["Name", "Amount", "Maturity Date", "Action"], 
           rows: tableData.fds.length > 0 
             ? tableData.fds.map(fd => [fd.name, fd.amount, fd.maturityDate, 
@@ -583,7 +579,7 @@ const Home = () => {
                 >
                   View
                 </Button>])
-            : [['No maturing FDs today', '-', '-', '-']]
+            : [['No maturing FDs this month', '-', '-', '-']]
         }, 
         // {
         //   title: "Recent Redemption", 
