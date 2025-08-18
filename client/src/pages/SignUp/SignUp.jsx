@@ -285,18 +285,15 @@ const SignUpPage = () => {
           </Button>
 
           {/* Google Sign-Up Button */}
-            {/* Google Sign-In Button */}
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: '8px' }}>
-              <div style={{ flex: 1 }}>
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={handleGoogleFailure}
-                  text="continue_with"
-                  shape="rectangular"
-                  size="large"
-                  style={{ width: '100%' }}
-                />
-              </div>
+            <div style={{ marginTop: '16px', borderRadius: '10px', overflow: 'hidden', width: '100%' }}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleFailure}
+                text="signup_with"
+                shape="rectangular"
+                size="large"
+                width="100%"
+              />
             </div>
 
           <div className="register-link">
