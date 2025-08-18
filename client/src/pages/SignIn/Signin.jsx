@@ -35,8 +35,8 @@ const LoginPage = () => {
   };
 
   const loginDemoUser = () => {
-    const demoEmail = 'ajay@gmail.com';
-    const demoPassword = '123456789';
+    const demoEmail = 'demo@gmail.com';
+    const demoPassword = 'demo@123';
     loginUser(demoEmail, demoPassword);
   };
 
@@ -177,17 +177,20 @@ const LoginPage = () => {
           </Button>
 
           {/* Google Sign-In Button */}
-          <div style={{ marginTop: '8px', borderRadius: '10px', overflow: 'hidden', width: '100%' }}>
-            
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleFailure}
-              text="continue_with"
-              shape="rectangular"
-              size="large"
-              width="100%"
-            />
+          <div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: '8px' }}>
+            <div style={{ flex: 1 }}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleFailure}
+                text="continue_with"
+                shape="rectangular"
+                size="large"
+                style={{ width: '100%' }}
+              />
+            </div>
           </div>
+
+
 
           <div className="register-link">
             <p>

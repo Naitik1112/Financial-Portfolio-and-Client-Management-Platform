@@ -37,71 +37,63 @@ const AddClient = () => {
   } = getStyles(darkMode);
   
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    let name1 = name.split(" ")[0]; 
-    const password = name1 + name.length + "123456";
-    const passwordConfirm = password;
+  let name1 = name.split(" ")[0]; 
+  const password = name1 + name.length + "123456";
+  const passwordConfirm = password;
 
-    const clientData = {
-      name,
-      email,
-      DOB,
-      contact,
-      pancard,
-      password,
-      passwordConfirm,
-    };
-
-    const backendURL = import.meta.env.VITE_BACKEND_URL;
-    const token = localStorage.getItem('jwt');
-
-    try {
-      const response = await fetch(`${backendURL}/api/v1/users/addUser`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(clientData),
-      });
-
-      if (response.ok) {
-        alert('Client added successfully');
-        window.location.href = "/myClient"; // ✅ Redirect on success
-      } else {
-        const responseText = await response.text();
-        if (responseText) {
-          try {
-            const error = JSON.parse(responseText);
-            alert(error.message || 'Something went wrong!');
-          } catch (e) {
-            alert('Failed to parse error response.');
-          }
-        } else {
-          alert('No response body received.');
-        }
-
-        // 🔁 Reset form fields
-        setName('');
-        setEmail('');
-        setDOB('');
-        setcontact('');
-        setpancard('');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error occurred while submitting the form');
-
-      // 🔁 Reset form fields
-      setName('');
-      setEmail('');
-      setDOB('');
-      setcontact('');
-      setpancard('');
-    }
+  const clientData = {
+    name,
+    email,
+    DOB,
+    contact,
+    pancard,
+    password,
+    passwordConfirm,
   };
+
+  const backendURL = import.meta.env.VITE_BACKEND_URL;
+  const token = localStorage.getItem('jwt');
+
+  try {
+    const response = await fetch(`${backendURL}/api/v1/users/addUser`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(clientData),
+    });
+
+    if (response.ok) {
+      alert('Client added successfully');
+      window.location.href = "/myClient"; // ✅ Redirect on success
+    } else {
+      const responseText = await response.text();
+      if (responseText) {
+        try {
+          const error = JSON.parse(responseText);
+          alert(error.message || 'Something went wrong!');
+        } catch (e) {
+          alert('Failed to parse error response.');
+        }
+      } else {
+        alert('No response body received.');
+      }
+
+      // ❌ Remove resetting fields here
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error occurred while submitting the form');
+
+    // ❌ Remove resetting fields here too
+  }
+};
+
+
 
   
 

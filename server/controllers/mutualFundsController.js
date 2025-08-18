@@ -113,17 +113,12 @@ const calculateTax = (
 };
 
 exports.redeemUnits = catchAsync(async (req, res, next) => {
+  const { Types } = require("mongoose");
+
   function toISTISOString(date) {
-    // IST offset is +5:30 = 330 minutes
     const offsetMinutes = 330;
-
-    // get UTC time in ms
     const utc = date.getTime();
-
-    // add offset in ms
     const istTime = new Date(utc + offsetMinutes * 60000);
-
-    // extract date parts
     const yyyy = istTime.getFullYear();
     const mm = String(istTime.getMonth() + 1).padStart(2, '0');
     const dd = String(istTime.getDate()).padStart(2, '0');
@@ -131,50 +126,39 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
     const min = String(istTime.getMinutes()).padStart(2, '0');
     const sec = String(istTime.getSeconds()).padStart(2, '0');
     const ms = String(istTime.getMilliseconds()).padStart(3, '0');
-
-    // Construct ISO string with offset +05:30
     return `${yyyy}-${mm}-${dd}T${hh}:${min}:${sec}.${ms}+05:30`;
   }
 
   const first = new Date();
   const now = toISTISOString(first);
-  const istString = now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
-  console.log('IST time:', istString, ', UTC : ', now);
-  const redemptionMap = req.body; // { mfId1: "100", mfId2: "200" }
+  console.log('IST time:', now);
+
+  const { adminId, ...rest } = req.body; // separate adminId from mutual fund map
+  const redemptionMap = rest;
+
+  const mfIds = Object.keys(redemptionMap).filter(key => Types.ObjectId.isValid(key));
+
   const taxSummary = [];
 
-  for (const mfId of Object.keys(redemptionMap)) {
+  for (const mfId of mfIds) {
     let unitsToRedeem = parseFloat(redemptionMap[mfId]);
-    if (isNaN(unitsToRedeem)) {
-      continue;
-    }
+    if (isNaN(unitsToRedeem)) continue;
 
     const mf = await MF.findOne({ _id: mfId });
 
     if (!mf) {
-      return res
-        .status(404)
-        .json({ message: `Mutual fund not found: ${mfId}` });
+      return res.status(404).json({ message: `Mutual fund not found: ${mfId}` });
     }
 
     // Fetch latest NAV from API
-    console.log(mf);
-    let nav;
-    let name;
-    let cat;
+    let nav, name, cat;
     try {
-      console.log(mf.AMFI);
-      console.log(`https://api.mfapi.in/mf/${mf.AMFI}/latest`);
       const response = await axios.get(
         `https://api.mfapi.in/mf/${mf.AMFI}/latest`,
         { headers: { Authorization: undefined } }
       );
-      if (
-        response.data.status === 'SUCCESS' &&
-        response.data.data &&
-        response.data.data[0]
-      ) {
+      if (response.data.status === 'SUCCESS' && response.data.data && response.data.data[0]) {
         nav = parseFloat(response.data.data[0].nav);
         name = response.data.meta.scheme_name;
         cat = response.data.meta.scheme_category;
@@ -183,40 +167,26 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
       }
     } catch (error) {
       console.error(`Failed to fetch NAV for AMFI code ${mf.AMFI}:`, error);
-      return res.status(500).json({
-        message: `Failed to fetch NAV for ${mf.schemeName}`
-      });
+      return res.status(500).json({ message: `Failed to fetch NAV for ${mf.schemeName}` });
     }
 
     if (isNaN(nav)) {
-      return res
-        .status(400)
-        .json({ message: `Invalid NAV received for mutual fund ${mfId}` });
+      return res.status(400).json({ message: `Invalid NAV received for mutual fund ${mfId}` });
     }
 
     let taxForThisFund = 0;
 
-    // 🟠 Lumpsum Redemption
+    // Lumpsum Redemption
     if (mf.investmentType === 'lumpsum') {
       const alreadyRedeemed = mf.redeemedUnits || 0;
       const availableUnits = mf.lumpsumUnits - alreadyRedeemed;
 
       if (unitsToRedeem > availableUnits) {
-        return res.status(400).json({
-          message: `Not enough units in lumpsum for ${mf.schemeName}`
-        });
+        return res.status(400).json({ message: `Not enough units in lumpsum for ${mf.schemeName}` });
       }
 
       const purchaseNAV = mf.lumpsumAmount / mf.lumpsumUnits;
-      const tax = calculateTax(
-        name,
-        cat,
-        new Date(mf.lumpsumDate),
-        new Date(now),
-        unitsToRedeem,
-        nav,
-        purchaseNAV
-      );
+      const tax = calculateTax(name, cat, new Date(mf.lumpsumDate), new Date(now), unitsToRedeem, nav, purchaseNAV);
       taxForThisFund += tax.tax;
 
       await MF.updateOne(
@@ -237,13 +207,12 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
       );
     }
 
-    // 🔁 SIP Redemption
+    // SIP Redemption
     if (mf.investmentType === 'sip') {
       const transactions = mf.sipTransactions || [];
       transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       const bulkOps = [];
-
       for (const tx of transactions) {
         if (unitsToRedeem <= 0) break;
 
@@ -252,23 +221,12 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
         if (available <= 0) continue;
 
         const redeemNow = Math.min(unitsToRedeem, available);
-        const tax = calculateTax(
-          name,
-          cat,
-          new Date(tx.date),
-          new Date(now),
-          redeemNow,
-          nav,
-          tx.nav
-        );
+        const tax = calculateTax(name, cat, new Date(tx.date), new Date(now), redeemNow, nav, tx.nav);
         taxForThisFund += tax.tax;
 
         bulkOps.push({
           updateOne: {
-            filter: {
-              _id: mfId,
-              'sipTransactions._id': tx._id
-            },
+            filter: { _id: mfId, 'sipTransactions._id': tx._id },
             update: {
               $inc: { 'sipTransactions.$.redeemedUnits': redeemNow },
               $push: {
@@ -284,18 +242,13 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
           }
         });
 
-        await MF.updateOne(
-          { _id: mfId },
-          { $set: { lastRedemptionDate: now } }
-        );
+        await MF.updateOne({ _id: mfId }, { $set: { lastRedemptionDate: now } });
 
         unitsToRedeem -= redeemNow;
       }
 
       if (unitsToRedeem > 0) {
-        return res.status(400).json({
-          message: `Not enough units to redeem in SIP for ${mf.schemeName}`
-        });
+        return res.status(400).json({ message: `Not enough units to redeem in SIP for ${mf.schemeName}` });
       }
 
       await MF.bulkWrite(bulkOps);
@@ -308,11 +261,9 @@ exports.redeemUnits = catchAsync(async (req, res, next) => {
     });
   }
 
-  res.status(200).json({
-    message: 'Redemption completed successfully',
-    taxSummary
-  });
+  res.status(200).json({ message: 'Redemption completed successfully', taxSummary, adminId });
 });
+
 
 exports.getAllLifePolicy = factory.getAll(MF);
 exports.getLifePolicy = factory.getOne(MF, {
