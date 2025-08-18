@@ -18,9 +18,6 @@ exports.getMonthlyPremiumData = catchAsync(async (req, res) => {
     });
   }
 
-  // Convert dd/mm format to a proper date for the current year
-  const currentYear = new Date().getFullYear();
-
   const startParts = startdate.split('/');
   const endParts = enddate.split('/');
 
@@ -30,107 +27,105 @@ exports.getMonthlyPremiumData = catchAsync(async (req, res) => {
       .json({ status: 'fail', message: 'Invalid date format. Use dd/mm' });
   }
 
-  const startDate = new Date(
-    currentYear,
-    parseInt(startParts[1], 10) - 1,
-    parseInt(startParts[0], 10)
-  );
-  const endDate = new Date(
-    currentYear,
-    parseInt(endParts[1], 10) - 1,
-    parseInt(endParts[0], 10)
-  );
+  const startDay = parseInt(startParts[0], 10);
+  const startMonth = parseInt(startParts[1], 10);
+  const endDay = parseInt(endParts[0], 10);
+  const endMonth = parseInt(endParts[1], 10);
 
-  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+  if (
+    isNaN(startDay) ||
+    isNaN(startMonth) ||
+    isNaN(endDay) ||
+    isNaN(endMonth)
+  ) {
     return res
       .status(400)
       .json({ status: 'fail', message: 'Invalid date values' });
   }
 
-  const lifePolicies = await Life.find({
-    startPremiumDate: { $gte: startDate, $lte: endDate }
-  })
+  // Helper to turn dd/mm into comparable number
+  const dateToNum = (day, month) => month * 100 + day;
+  const startNum = dateToNum(startDay, startMonth);
+  const endNum = dateToNum(endDay, endMonth);
+
+  // Fetch all policies first
+  const lifePoliciesRaw = await Life.find()
     .populate('clientId', 'name')
     .populate('nominee1ID', 'name')
     .populate('nominee2ID', 'name')
     .populate('nominee3ID', 'name');
 
-  const generalPolicies = await General.find({
-    startPremiumDate: { $gte: startDate, $lte: endDate }
-  })
+  const generalPoliciesRaw = await General.find()
     .populate('clientId', 'name')
     .populate('nominee1ID', 'name')
     .populate('nominee2ID', 'name')
     .populate('nominee3ID', 'name');
 
-  const formattedLifePolicies = lifePolicies.map(lifePolicies => ({
-    _id: lifePolicies._id,
-    policyNumber: lifePolicies.policyNumber,
-    policyName: lifePolicies.policyName,
-    companyName: lifePolicies.companyName,
-    holderName: lifePolicies.clientId?.name || null,
-    nominee1Name: lifePolicies.nominee1ID?.name || null,
-    nominee2Name: lifePolicies.nominee2ID?.name || null,
-    nominee3Name: lifePolicies.nominee3ID?.name || null,
-    startPremiumDate: lifePolicies.startPremiumDate.toLocaleDateString('en-GB'),
-    endPremiumDate: lifePolicies.endPremiumDate.toLocaleDateString('en-GB'),
-    maturityDate: lifePolicies.maturityDate.toLocaleDateString('en-GB'),
-    premium: lifePolicies.premium,
-    __v: lifePolicies.__v
+  // Filter in JS ignoring year
+  const filterByRange = policy => {
+    if (!policy.startPremiumDate) return false;
+    const d = new Date(policy.startPremiumDate);
+    const num = dateToNum(d.getDate(), d.getMonth() + 1);
+    return num >= startNum && num <= endNum;
+  };
+
+  const lifePolicies = lifePoliciesRaw.filter(filterByRange);
+  const generalPolicies = generalPoliciesRaw.filter(filterByRange);
+
+  console.log('Life Policies Found:', lifePolicies.length);
+  console.log('General Policies Found:', generalPolicies.length);
+
+  const formattedLifePolicies = lifePolicies.map(policy => ({
+    _id: policy._id,
+    policyNumber: policy.policyNumber,
+    policyName: policy.policyName,
+    companyName: policy.companyName,
+    holderName: policy.clientId?.name || null,
+    nominee1Name: policy.nominee1ID?.name || null,
+    nominee2Name: policy.nominee2ID?.name || null,
+    nominee3Name: policy.nominee3ID?.name || null,
+    startPremiumDate: policy.startPremiumDate.toLocaleDateString('en-GB'),
+    endPremiumDate: policy.endPremiumDate.toLocaleDateString('en-GB'),
+    maturityDate: policy.maturityDate.toLocaleDateString('en-GB'),
+    premium: policy.premium,
+    __v: policy.__v
   }));
 
-  const formattedGeneralPolicies = generalPolicies.map(generalPolicies => ({
-    _id: generalPolicies._id,
-    policyNumber: generalPolicies.policyNumber,
-    policyName: generalPolicies.policyName,
-    companyName: generalPolicies.companyName,
-    holderName: generalPolicies.clientId?.name || null,
-    nominee1Name: generalPolicies.nominee1ID?.name || null,
-    startPremiumDate: generalPolicies.startPremiumDate.toLocaleDateString(
-      'en-GB'
-    ),
-    type: generalPolicies.type,
-    __v: generalPolicies.__v
+  const formattedGeneralPolicies = generalPolicies.map(policy => ({
+    _id: policy._id,
+    policyNumber: policy.policyNumber,
+    policyName: policy.policyName,
+    companyName: policy.companyName,
+    holderName: policy.clientId?.name || null,
+    nominee1Name: policy.nominee1ID?.name || null,
+    startPremiumDate: policy.startPremiumDate.toLocaleDateString('en-GB'),
+    type: policy.type,
+    __v: policy.__v
   }));
 
   const mergedPolicies = [
     ...formattedLifePolicies.map(policy => ({
       ...policy,
-      type: '', // Not available in Life policies
-      policyType: 'Life' // New field to indicate policy type
+      type: '',
+      policyType: 'Life'
     })),
     ...formattedGeneralPolicies.map(policy => ({
       ...policy,
-      endPremiumDate: '', // Not available in General policies
-      maturityDate: '', // Not available in General policies
-      premium: '', // Not available in General policies
-      policyType: 'General' // New field to indicate policy type
+      endPremiumDate: '',
+      maturityDate: '',
+      premium: '',
+      policyType: 'General'
     }))
   ];
 
-  // Calculate investment summary
+  // ✅ investment summary
   const uniqueClientIds = new Set();
+  lifePolicies.forEach(p => p.clientId && uniqueClientIds.add(p.clientId._id.toString()));
+  generalPolicies.forEach(p => p.clientId && uniqueClientIds.add(p.clientId._id.toString()));
 
-  // Add all client IDs from life policies
-  lifePolicies.forEach(policy => {
-    if (policy.clientId) {
-      uniqueClientIds.add(policy.clientId._id.toString());
-    }
-  });
-
-  // Add all client IDs from general policies
-  generalPolicies.forEach(policy => {
-    if (policy.clientId) {
-      uniqueClientIds.add(policy.clientId._id.toString());
-    }
-  });
-
-  const numberOfClients = uniqueClientIds.size;
-
-  // Create extras with investment summary
   const extras = {
     investmentSummary: {
-      numberOfClients: numberOfClients,
+      numberOfClients: uniqueClientIds.size,
       totalLifePolicies: lifePolicies.length,
       totalGeneralPolicies: generalPolicies.length,
       totalPolicies: lifePolicies.length + generalPolicies.length
@@ -150,12 +145,10 @@ exports.getMonthlyPremiumData = catchAsync(async (req, res) => {
     { label: 'Nominee 1', value: 'nominee1Name' }
   ];
 
-  if (format == 'pdf') {
-    // Create and send a PDF file
-    const pdfPath = 'Monthly_Report';
+  if (format === 'pdf') {
     generatePDF(
       mergedPolicies,
-      pdfPath,
+      'Monthly_Report',
       res,
       lifeInsuranceFields,
       'Renewal report',
@@ -163,14 +156,12 @@ exports.getMonthlyPremiumData = catchAsync(async (req, res) => {
       req.body.email,
       req.body.title,
       req.body.description,
-      extras // Pass extras to the PDF generator
+      extras
     );
-  } else if (format == 'excel') {
-    // Create and send an Excel file
-    const excelPath = 'Monthly_Report';
+  } else if (format === 'excel') {
     generateExcel(
       mergedPolicies,
-      excelPath,
+      'Monthly_Report',
       res,
       lifeInsuranceFields,
       'Renewal report',
@@ -178,17 +169,17 @@ exports.getMonthlyPremiumData = catchAsync(async (req, res) => {
       req.body.email,
       req.body.title,
       req.body.description,
-      extras // Pass extras to the Excel generator
+      extras
     );
   } else {
-    // If format is not specified, return JSON with extras
     return res.status(200).json({
       status: 'success',
       data: mergedPolicies,
-      extras: extras
+      extras
     });
   }
 });
+
 
 exports.getTaxation = catchAsync(async (req, res) => {
   console.log(req.body);
