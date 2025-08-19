@@ -178,10 +178,10 @@ async function verifyPAN({ pan, name, date_of_birth }) {
   console.log('date_of_birth ', date_of_birth);
   const dob = formatDOB(date_of_birth);
   // console.log(accessToken);
-  // console.log(dob);
-  // console.log(pan);
-  // console.log(process.env.API_KEY);
-  // console.log(name);
+  console.log(dob);
+  console.log(pan);
+  console.log(process.env.API_KEY);
+  console.log(name);
   const response = await axios.post(
     `${process.env.SANDBOX_HOST}/kyc/pan/verify`,
     {
