@@ -44,10 +44,12 @@ const handleSubmit = async (e) => {
   const password = name1 + name.length + "123456";
   const passwordConfirm = password;
 
+  console.log(DOB)
+
   const clientData = {
     name,
     email,
-    DOB,
+    DOB: DOB ? DOB.format("YYYY-MM-DD") : null,
     contact,
     pancard,
     password,
@@ -56,6 +58,8 @@ const handleSubmit = async (e) => {
 
   const backendURL = import.meta.env.VITE_BACKEND_URL;
   const token = localStorage.getItem('jwt');
+  
+  console.log(JSON.stringify(clientData))
 
   try {
     const response = await fetch(`${backendURL}/api/v1/users/addUser`, {
